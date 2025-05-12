@@ -1,3 +1,4 @@
+// firebaseConfig.js
 import { initializeApp } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
@@ -10,7 +11,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getFirestore } from "firebase/firestore";
 
-// Inicializa o app com as variáveis de ambiente definidas no arquivo .env
+// Inicializa o app
 const app = initializeApp({
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: `${process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com`,
@@ -20,15 +21,13 @@ const app = initializeApp({
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID
 });
 
-// Inicializa a autenticação com persistência no AsyncStorage (React Native)
+// Inicializa a autenticação com persistência no React Native
 const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage)
 });
 
-// Inicializa o Firestore
 const db = getFirestore(app);
 
-// Exporta os serviços e funções de autenticação mais usadas
 export {
   auth,
   createUserWithEmailAndPassword,
