@@ -1,9 +1,23 @@
-import { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { collection, query, onSnapshot, orderBy, deleteDoc, doc } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
-import { useRouter } from 'expo-router';
-import { AntDesign, FontAwesome } from '@expo/vector-icons';
+import { AntDesign, FontAwesome } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { auth, db } from "../firebaseConfig";
 
 export default function Home() {
   const [expenses, setExpenses] = useState([]);
@@ -14,17 +28,21 @@ export default function Home() {
   useEffect(() => {
     if (!user) return;
 
-    const expensesRef = collection(db, 'users', user.uid, 'expenses');
-
-    const q = query(expensesRef, orderBy('date', 'desc'));
+    const expensesRef = collection(db, "users", user.uid, "expenses");
+    const q = query(expensesRef, orderBy("date", "desc"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => {
+        const expenseId = doc.id;
         const docData = doc.data();
         return {
-          id: doc.id,
-          ...docData,
-          date: docData.date?.toDate?.() || null,
+          id: expenseId,
+          description: docData.description,
+          value: docData.value,
+          date: docData.date, 
+          ...Object.fromEntries(
+            Object.entries(docData).filter(([key]) => key !== "id")
+          ),
         };
       });
 
@@ -39,10 +57,10 @@ export default function Home() {
 
   const handleDelete = async (id) => {
     try {
-      await deleteDoc(doc(db, 'users', user.uid, 'expenses', id));
+      await deleteDoc(doc(db, "users", user.uid, "expenses", id));
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível excluir o gasto.');
-      console.error('Erro ao excluir:', error);
+      Alert.alert("Erro", "Não foi possível excluir o gasto.");
+      console.error("Erro ao excluir:", error);
     }
   };
 
@@ -51,13 +69,27 @@ export default function Home() {
       <View>
         <Text style={styles.expenseDesc}>{item.description}</Text>
         <Text style={styles.expenseDate}>
-          {item.date ? item.date.toLocaleDateString() : 'Sem data'}
+          {item.date instanceof Date
+            ? item.date.toLocaleDateString()
+            : item.date?.toDate?.()?.toLocaleDateString() || "Sem data"}
         </Text>
       </View>
       <View style={styles.rightSection}>
         <Text style={styles.expenseValue}>R$ {item.value?.toFixed(2)}</Text>
         <View style={styles.actionButtons}>
-          <TouchableOpacity onPress={() => router.push(`/edit/${item.id}`)} style={{ marginRight: 12 }}>
+          <TouchableOpacity
+            onPress={() => {
+              if (item.id) {
+                router.push(`/edit/${item.id}`);
+              } else {
+                Alert.alert(
+                  "Erro",
+                  "Este item não possui um ID válido e não pode ser editado."
+                );
+              }
+            }}
+            style={{ marginRight: 12 }}
+          >
             <FontAwesome name="edit" size={20} color="#3b82f6" />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => handleDelete(item.id)}>
@@ -74,7 +106,7 @@ export default function Home() {
         <Text style={styles.title}>Controle de Gastos</Text>
         <TouchableOpacity
           style={styles.accountButton}
-          onPress={() => router.push('/account')}
+          onPress={() => router.push("/account")}
         >
           <Text style={styles.accountText}>Minha Conta</Text>
         </TouchableOpacity>
@@ -94,7 +126,7 @@ export default function Home() {
 
       <TouchableOpacity
         style={styles.addButton}
-        onPress={() => router.push('/add')}
+        onPress={() => router.push("/add")}
       >
         <AntDesign name="pluscircle" size={52} color="#3b82f6" />
       </TouchableOpacity>
@@ -105,78 +137,78 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     paddingHorizontal: 16,
     paddingTop: 48,
   },
   topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   title: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   accountButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: "#3b82f6",
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
   accountText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
   },
   totalContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 24,
   },
   header: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   total: {
     fontSize: 24,
-    color: '#16a34a',
-    fontWeight: 'bold',
+    color: "#16a34a",
+    fontWeight: "bold",
     marginTop: 4,
   },
   list: {
     paddingBottom: 80,
   },
   expenseItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#f1f5f9',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#f1f5f9",
     padding: 12,
     marginBottom: 10,
     borderRadius: 10,
   },
   expenseDesc: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   expenseDate: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   expenseValue: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#dc2626',
+    fontWeight: "bold",
+    color: "#dc2626",
   },
   rightSection: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
+    alignItems: "flex-end",
+    justifyContent: "space-between",
   },
   actionButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: 6,
   },
   addButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 24,
     right: 24,
   },

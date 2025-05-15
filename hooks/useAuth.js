@@ -1,6 +1,5 @@
-// hooks/useAuth.js
-import { useState, useEffect } from 'react';
-import { auth } from '../firebaseConfig'; // Certifique-se de que o caminho do arquivo firebase está correto
+import { useEffect, useState } from "react";
+import { auth } from "../firebaseConfig";
 
 const useAuth = () => {
   const [user, setUser] = useState(null);

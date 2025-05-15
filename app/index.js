@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Link } from 'expo-router';
+import { Link } from "expo-router";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Home() {
   return (
@@ -24,39 +24,39 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 16,
-    backgroundColor: '#f7f7f7', // Fundo suave
+    backgroundColor: "#f7f7f7", 
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',   // Cor mais escura para o título
+    fontWeight: "bold",
+    color: "#333", 
     marginBottom: 16,
   },
   subtitle: {
     fontSize: 18,
-    color: '#555', // Texto explicativo
-    textAlign: 'center',
+    color: "#555", 
+    textAlign: "center",
     marginBottom: 32,
     paddingHorizontal: 20,
     lineHeight: 26,
   },
   button: {
-    backgroundColor: '#4CAF50', // Cor verde para o botão
+    backgroundColor: "#4CAF50", 
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 8, // Bordas arredondadas
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 20,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)', // Correção aqui!
-    elevation: 5, // Sombra no Android
+    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.2)",
+    elevation: 5,
   },
   buttonText: {
-    color: '#fff', // Texto branco
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

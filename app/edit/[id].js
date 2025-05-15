@@ -1,69 +1,87 @@
-import { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../../firebaseConfig'; // caminho corrigido
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { auth, db } from "../../firebaseConfig";
 
 export default function EditExpense() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const [description, setDescription] = useState('');
-  const [value, setValue] = useState('');
-  const [date, setDate] = useState('');
+  const [description, setDescription] = useState("");
+  const [value, setValue] = useState("");
+  const [date, setDate] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setIsLoggedIn(!!user);
+      if (!user) {
+        router.replace("/login");
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn && user && id) {
+      const loadExpenseData = async () => {
+        setLoading(true);
         try {
-          const docRef = doc(db, 'users', user.uid, 'expenses', id);
+          const docRef = doc(db, "users", user.uid, "expenses", id);
           const docSnap = await getDoc(docRef);
 
           if (docSnap.exists()) {
             const data = docSnap.data();
-            setDescription(data.description || '');
-            setValue(data.value?.toString() || '');
-            const dateObj = data.date?.toDate?.();
-            setDate(dateObj ? dateObj.toISOString().split('T')[0] : '');
+            setDescription(data.description);
+            setValue(data.value?.toString() || "");
+            const dateObj = data.date?.toDate();
+            setDate(dateObj ? dateObj.toISOString().split("T")[0] : "");
           } else {
-            Alert.alert('Erro', 'Gasto não encontrado.');
-            router.replace('/');
+            Alert.alert("Erro", "Gasto não encontrado.");
+            router.replace("/home");
           }
         } catch (error) {
-          Alert.alert('Erro', 'Não foi possível carregar o gasto.');
+          Alert.alert("Erro", "Não foi possível carregar o gasto.");
           console.error(error);
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
-      } else {
-        router.replace('/login'); 
-      }
-    });
-
-    return () => unsubscribe();
-  }, [id]);
+      };
+      loadExpenseData();
+    } else if (isLoggedIn && user && !id) {
+      Alert.alert("Erro", "ID do gasto inválido.");
+      router.replace("/home");
+    }
+  }, [isLoggedIn, user, id, router]);
 
   const handleUpdate = async () => {
     if (!description || !value || !date) {
-      Alert.alert('Erro', 'Preencha todos os campos.');
+      Alert.alert("Erro", "Preencha todos os campos.");
       return;
     }
-
     try {
-      const docRef = doc(db, 'users', user.uid, 'expenses', id);
+      const docRef = doc(db, "users", user.uid, "expenses", id);
       await updateDoc(docRef, {
         description,
         value: parseFloat(value),
         date: new Date(date),
       });
-
-      router.replace('/home');
+      router.replace("/home");
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível atualizar o gasto.');
+      Alert.alert("Erro", "Não foi possível atualizar o gasto.");
       console.error(error);
     }
   };
@@ -76,6 +94,10 @@ export default function EditExpense() {
     );
   }
 
+  if (!isLoggedIn) {
+    return null;
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Descrição:</Text>
@@ -84,7 +106,6 @@ export default function EditExpense() {
         value={description}
         onChangeText={setDescription}
       />
-
       <Text style={styles.label}>Valor:</Text>
       <TextInput
         style={styles.input}
@@ -92,7 +113,6 @@ export default function EditExpense() {
         onChangeText={setValue}
         keyboardType="numeric"
       />
-
       <Text style={styles.label}>Data (YYYY-MM-DD):</Text>
       <TextInput
         style={styles.input}
@@ -100,7 +120,6 @@ export default function EditExpense() {
         onChangeText={setDate}
         placeholder="Ex: 2025-05-13"
       />
-
       <TouchableOpacity style={styles.button} onPress={handleUpdate}>
         <Text style={styles.buttonText}>Salvar Alterações</Text>
       </TouchableOpacity>
@@ -112,35 +131,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   label: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginTop: 12,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 8,
     padding: 10,
     marginTop: 4,
   },
   button: {
     marginTop: 24,
-    backgroundColor: '#3b82f6',
+    backgroundColor: "#3b82f6",
     padding: 14,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
     fontSize: 16,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

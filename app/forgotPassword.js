@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TextInput, Button, View, Text, StyleSheet } from 'react-native';
-import { auth } from '../firebaseConfig';  // Supondo que a configuração do Firebase esteja em firebaseConfig.js
+import { auth } from '../firebaseConfig';
 import { sendPasswordResetEmail } from 'firebase/auth';
 
 export default function ForgotPassword() {

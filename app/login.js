@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { useRouter } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebaseConfig';  // Importação da configuração do Firebase
+import { auth } from '../firebaseConfig';  
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 import { EmailInput, PasswordInput } from '../components/CustomInputs';
 
@@ -40,7 +40,7 @@ export default function Login() {
             const userCredentials = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredentials.user;
             console.log(user);
-            router.replace('/home'); // Navega para a tela principal (index.js)
+            router.replace('/home'); 
         } catch (error) {
             setErrorMessage(error.message);
         }

@@ -19,6 +19,7 @@ export default function AddExpense() {
 
     try {
       const expenseData = {
+        id: user.uid, 
         description,
         value: parseFloat(value),
         date: new Date(date),
