@@ -1,20 +1,20 @@
+import { useNavigation } from '@react-navigation/native';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import {
     SafeAreaView,
-    Text,
-    View,
     StyleSheet,
-    TouchableOpacity
+    Text,
+    TouchableOpacity,
+    View
 } from "react-native";
-import { useRouter } from 'expo-router';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebaseConfig';  
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 import { EmailInput, PasswordInput } from '../components/CustomInputs';
+import { auth } from '../firebaseConfig';
 
 export default function Login() {
 
-    const router = useRouter();
+    const navigation = useNavigation();
 
     const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const regexPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
@@ -25,13 +25,18 @@ export default function Login() {
 
     const login = async () => {
         if (!email || !password) {
-            setErrorMessage('Informe o e-mail e senha.');
+            setErrorMessage('Informe o e-mail e a senha.');
             return;
         }
 
         if (!regexEmail.test(email)) {
-            setErrorMessage('E-mail ou senha  inválidos');
+            setErrorMessage('E-mail ou Senha ou inválidos.');
             return;
+        }
+
+        if (!regexPassword.test(password)) {
+          setErrorMessage("E-mail ou Senha ou inválidos.")
+          return;
         }
 
         setErrorMessage('');
@@ -40,9 +45,13 @@ export default function Login() {
             const userCredentials = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredentials.user;
             console.log(user);
-            router.replace('/home'); 
+            navigation.replace('Home');
         } catch (error) {
-            setErrorMessage(error.message);
+            if (error.code === 'auth/invalid-credential') {
+                setErrorMessage('Credenciais inválidas. Verifique seu e-mail e senha.');
+            } else {
+                setErrorMessage('Erro ao iniciar sessão: ' + error.message); 
+            }
         }
     };
 
@@ -57,7 +66,7 @@ export default function Login() {
                 <EmailInput value={email} setValue={setEmail} />
                 <PasswordInput value={password} setValue={setPassword} />
 
-                <TouchableOpacity onPress={() => router.push('/forgotPassword')}>
+                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
                     <Text>Esqueci a senha</Text>
                 </TouchableOpacity>
 
@@ -67,7 +76,7 @@ export default function Login() {
 
                 <Text>Ainda não tem uma conta?</Text>
 
-                <SecondaryButton text={'Registrar-se'} action={() => router.push('/register')} />
+                <SecondaryButton text={'Registrar-se'} action={() => navigation.navigate('Register')} />
             </View>
         </SafeAreaView>
     );

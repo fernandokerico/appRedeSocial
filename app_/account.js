@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { auth, db } from '../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 
-export default function Account() {
+const Account = () => {
   const user = auth.currentUser;
-  const router = useRouter();
+  const navigation = useNavigation();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const handleLogout = async () => {
     await auth.signOut();
-    router.replace('/');
+    navigation.replace('Login');
   };
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export default function Account() {
       </TouchableOpacity>
     </View>
   );
-}
+};
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -108,3 +108,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+export default Account;

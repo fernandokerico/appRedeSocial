@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { SafeAreaView, Text, View, StyleSheet, TouchableOpacity } from "react-native";
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../firebaseConfig';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { EmailInput, PasswordInput } from '../components/CustomInputs';
 
 export default function Register() {
-  const router = useRouter();
+  const navigation = useNavigation();
 
   const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const regexPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
@@ -46,7 +46,7 @@ export default function Register() {
         email: email,
       });
 
-      router.replace('/login');
+      navigation.replace('Login');
     } catch (error) {
       setErrorMessage(error.message);
     }
@@ -70,7 +70,7 @@ export default function Register() {
         <View style={styles.loginContainer}>
           <Text style={styles.loginText}>
             Já tem uma conta?
-            <TouchableOpacity onPress={() => router.push('/login')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
               <Text style={{ color: '#007BFF' }}> Entrar</Text>
             </TouchableOpacity>
           </Text>
@@ -124,4 +124,3 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
 });
-

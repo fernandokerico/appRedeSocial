@@ -1,28 +1,14 @@
-import { AntDesign, FontAwesome } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import {
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-} from "firebase/firestore";
-import { useEffect, useState } from "react";
-import {
-  Alert,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { auth, db } from "../firebaseConfig";
+import React, { useEffect, useState } from 'react';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AntDesign, FontAwesome } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { auth, db } from '../firebaseConfig';
 
-export default function Home() {
+const Home = () => {
   const [expenses, setExpenses] = useState([]);
   const [total, setTotal] = useState(0);
-  const router = useRouter();
+  const navigation = useNavigation();
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -32,19 +18,15 @@ export default function Home() {
     const q = query(expensesRef, orderBy("date", "desc"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => {
-        const expenseId = doc.id;
-        const docData = doc.data();
-        return {
-          id: expenseId,
-          description: docData.description,
-          value: docData.value,
-          date: docData.date, 
-          ...Object.fromEntries(
-            Object.entries(docData).filter(([key]) => key !== "id")
-          ),
-        };
-      });
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        description: doc.data().description,
+        value: doc.data().value,
+        date: doc.data().date,
+        ...Object.fromEntries(
+          Object.entries(doc.data()).filter(([key]) => key !== "id")
+        ),
+      }));
 
       setExpenses(data);
 
@@ -80,7 +62,7 @@ export default function Home() {
           <TouchableOpacity
             onPress={() => {
               if (item.id) {
-                router.push(`/edit/${item.id}`);
+                navigation.navigate('Edit', { id: item.id });
               } else {
                 Alert.alert(
                   "Erro",
@@ -106,7 +88,7 @@ export default function Home() {
         <Text style={styles.title}>Controle de Gastos</Text>
         <TouchableOpacity
           style={styles.accountButton}
-          onPress={() => router.push("/account")}
+          onPress={() => navigation.navigate('Account')}
         >
           <Text style={styles.accountText}>Minha Conta</Text>
         </TouchableOpacity>
@@ -126,13 +108,13 @@ export default function Home() {
 
       <TouchableOpacity
         style={styles.addButton}
-        onPress={() => router.push("/add")}
+        onPress={() => navigation.navigate('Add')}
       >
         <AntDesign name="pluscircle" size={52} color="#3b82f6" />
       </TouchableOpacity>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -213,3 +195,5 @@ const styles = StyleSheet.create({
     right: 24,
   },
 });
+
+export default Home;

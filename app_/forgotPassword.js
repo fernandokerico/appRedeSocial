@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { TextInput, Button, View, Text, StyleSheet } from 'react-native';
 import { auth } from '../firebaseConfig';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import { useNavigation } from '@react-navigation/native';
 
-export default function ForgotPassword() {
+const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
+  const navigation = useNavigation();
 
   const handlePasswordReset = async () => {
     try {
@@ -29,7 +31,7 @@ export default function ForgotPassword() {
       {message ? <Text style={styles.message}>{message}</Text> : null}
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -57,3 +59,5 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 });
+
+export default ForgotPassword;
