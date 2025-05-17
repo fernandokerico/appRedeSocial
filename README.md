@@ -1,50 +1,112 @@
-# Welcome to your Expo app 👋
+# Projeto: Controle de Gastos
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## 🛠️ Construído com
+-React Native
+-Expo
+-Firebase
 
-## Get started
+### 🗂️ Estrutura de pastas
+O projeto está estruturado da seguinte forma:
 
-1. Install dependencies
+-`app_/`: Código principal do aplicativo.
 
-   ```bash
-   npm install
-   ```
+   `account.js`: Lógica relacionada à conta do usuário.
+   
+   `add.js`: Lógica para adicionar gastos.
+   
+   `forgotPassword.js`: Lógica para recuperação de senha.
+   
+   `home.js`: Tela principal do aplicativo.
+   
+   `index.js`: Tela de abertura.
+   
+   `login.js`: Lógica para login de usuários.
+   
+   `register.js`: Lógica para cadastro de usuários.
+   
+   `edit/`: pasta de edição
+   
+      `[id].js`: Editar os gastos
+   
+`assets/`: Recursos do aplicativo (imagens, ícones).
 
-2. Start the app
+`components/`: Componentes reutilizáveis.   
+ 
+   `Buttons.js`: Componentes de botão personalizados.
+  
+   `CustomInputs.js`: Componentes de entrada de texto personalizados.
 
-   ```bash
-   npx expo start
-   ```
+`navigation/`: Configuração de navegação do aplicativo.
 
-In the output, you'll find options to open the app in a
+   `AppNavigator.js`: Navegador principal do aplicativo.
+  
+   `AuthNavigator.js`: Navegador para telas de autenticação.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+`node_modules/`: Dependências do projeto (gerenciado pelo npm/yarn).
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+`.env`: Arquivo para variáveis de ambiente.
 
-## Get a fresh project
+`.env.example`: Arquivo de exemplo para variáveis de ambiente.
 
-When you're ready, run:
+`.gitignore`: Especifica arquivos que o Git deve ignorar.
 
+`App.js`: Ponto de entrada do aplicativo.
+
+`app.json`: Configuração do Expo.
+
+`eslint.config.js`: Configuração do ESLint.
+
+`firebaseConfig.js`: Configuração do Firebase.
+
+`package-lock.json`: Arquivo de lock do npm.
+
+`package.json`: Arquivo de manifesto do projeto.
+
+`README.md`: Este arquivo.
+
+### 📋 Pré-requisitos
+
+-Node.js
+-npm ou yarn
+-Expo CLI (npm install -g expo-cli)
+-Uma conta no Firebase
+
+### 🔧 Instalação
+
+Essas instruções permitirão que você obtenha uma cópia do projeto em operação na sua máquina local para fins de desenvolvimento e teste.
+
+1. Clone o repositório:
+  ```bash
+  git clone git clone https://github.com/Matheus-Pereira-Silva/Atividade_m1.git
+  ```
+
+  ```bash
+  cd controle-gastos
+  ```
+
+2. Instale as dependências do projeto:
+  ```bash
+  npm install
+  ```
+
+4 Configure o Firebase:
+   -Crie um projeto no Firebase Console.
+   
+   -Copie a configuração do seu projeto Firebase. 
+   
+   -Crie o .env.
+   
+   -Coloque as configurações do firebase na .env.
+   
+   -Configure a autenticação do Firebase.
+   
+
+5. Inicie o servidor:
 ```bash
-npm run reset-project
+npm start || npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+# ✒️ Membros:
+É composto por: <br>
+[Matheus](https://github.com/Matheus-Pereira-Silva)  
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
