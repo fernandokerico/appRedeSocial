@@ -90,6 +90,7 @@ Essas instruções permitirão que você obtenha uma cópia do projeto em opera�
   ```
 
 4 Configure o Firebase:
+
    -Crie um projeto no Firebase Console.
    
    -Copie a configuração do seu projeto Firebase. 
