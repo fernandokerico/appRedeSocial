@@ -33,7 +33,9 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 16,
+    marginBottom: 8, 
+    paddingHorizontal: 20, 
+    textAlign: 'center', 
   },
   subtitle: {
     fontSize: 18,
@@ -51,7 +53,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
     elevation: 5,
   },
   buttonText: {

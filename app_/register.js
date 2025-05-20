@@ -5,6 +5,7 @@ import { auth, db } from '../firebaseConfig';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { EmailInput, PasswordInput } from '../components/CustomInputs';
+import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 
 export default function Register() {
   const navigation = useNavigation();
@@ -46,35 +47,35 @@ export default function Register() {
         email: email,
       });
 
+      console.log('Navegando para a tela de Login...'); // Adicionado para depuração
       navigation.replace('Login');
     } catch (error) {
       setErrorMessage(error.message);
+      console.error('Erro durante o registro:', error); // Adicionado para depuração
     }
   };
 
   return (
-    <SafeAreaView>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f0f0f0' }}>
       <View style={styles.container}>
-        <Text style={styles.title}>Registar</Text>
+        <Text style={styles.title}>Registrar-se</Text>
         <EmailInput value={email} setValue={setEmail} placeholder="E-mail" />
-        <PasswordInput value={password} setValue={setPassword} placeholder="Senha" />
+        <PasswordInput
+          value={password}
+          setValue={setPassword}
+          placeholder="Senha"
+        />
         <EmailInput value={name} setValue={setName} placeholder="Nome" />
         <EmailInput value={phone} setValue={setPhone} placeholder="Telefone" />
 
-        {errorMessage && <Text style={styles.errorMessage}>{errorMessage}</Text>}
+        {errorMessage && (
+          <Text style={styles.errorMessage}>{errorMessage}</Text>
+        )}
 
-        <TouchableOpacity style={styles.button} onPress={handleRegister}>
-          <Text style={styles.buttonText}>Registar</Text>
-        </TouchableOpacity>
+        <PrimaryButton text={'Registrar-se'} action={handleRegister} />
 
-        <View style={styles.loginContainer}>
-          <Text style={styles.loginText}>
-            Já tem uma conta?
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={{ color: '#007BFF' }}> Entrar</Text>
-            </TouchableOpacity>
-          </Text>
-        </View>
+        <Text style={styles.loginTextBelowButton}>Já tem uma conta?</Text>
+        <SecondaryButton text={'Entrar'} action={() => navigation.navigate('Login')} />
       </View>
     </SafeAreaView>
   );
@@ -82,45 +83,26 @@ export default function Register() {
 
 const styles = StyleSheet.create({
   container: {
-    margin: 25,
-    padding: 0,
     flex: 1,
+    padding: 25,
     justifyContent: 'center',
-    alignItems: 'stretch'
   },
   title: {
     fontSize: 45,
     textAlign: 'center',
-    marginVertical: 40,
-    fontWeight: 'bold',
-    color: '#000000'
+    marginBottom: 40,
+    color: '#333',
   },
   errorMessage: {
-    fontSize: 18,
+    fontSize: 16,
     textAlign: 'center',
     color: 'red',
-    marginBottom: 10,
+    marginBottom: 20,
   },
-  button: {
-    backgroundColor: '#00509e',
-    paddingVertical: 12,
-    borderRadius: 5,
-    alignItems: 'center',
-    marginTop: 20,
-    marginHorizontal: 0,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  loginContainer: {
+  loginTextBelowButton: {
+    textAlign: 'center',
     marginTop: 10,
-    alignItems: 'center',
-    marginHorizontal: 0,
-  },
-  loginText: {
     fontSize: 16,
-    color: '#000000',
+    color: '#555',
   },
 });
