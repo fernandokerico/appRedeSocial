@@ -1,3 +1,4 @@
+// app_/login.js
 import { useNavigation } from '@react-navigation/native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useEffect, useState } from 'react';
@@ -45,7 +46,8 @@ export default function Login() {
             const userCredentials = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredentials.user;
             console.log(user);
-            navigation.replace('Home');
+            // ALTERADO: Redireciona para a rota 'Feed' (sua nova tela principal)
+            navigation.replace('Feed'); 
         } catch (error) {
             if (error.code === 'auth/invalid-credential') {
                 setErrorMessage('Credenciais inválidas. Verifique seu e-mail e senha.');

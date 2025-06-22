@@ -1,36 +1,27 @@
-// src/navigation/AppNavigator.js
+import React from 'react'; // <--- Adicionado aqui
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import TabNavigator from "./TabNavigator"; // Importa o TabNavigator
 
-// TODOS OS IMPORTS ABAIXO ESTÃO AJUSTADOS
-import Home from "../app_/home.js"; // Caminho ajustado
-import Login from "../app_/login.js"; // Caminho ajustado
-import Register from "../app_/register.js"; // Caminho ajustado
-import ForgotPassword from "../app_/forgotPassword.js"; // Caminho ajustado
-
-// NOVA TELA: Ajuste o caminho aqui também
-import OtherUserProfileScreen from "../app_/OtherUserProfileScreen"; // Caminho ajustado
+// NOTA: As telas de autenticação (Login, Register, ForgotPassword)
+// foram REMOVIDAS daqui, pois elas já são gerenciadas pelo AuthNavigator.
+// Este AppNavigator é APENAS para usuários LOGADOS.
 
 const Stack = createNativeStackNavigator();
 
 function AppNavigator() {
   return (
     <Stack.Navigator initialRouteName="MainApp">
-      {/* As telas de autenticação */}
-      <Stack.Screen name="Login" component={Login} />
-      <Stack.Screen name="Register" component={Register} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-
-      {/* A tela principal da aplicação, que é o TabNavigator */}
+      {/* A tela principal da aplicação para usuários logados, que é o TabNavigator */}
       <Stack.Screen
-        name="MainApp"
+        name="MainApp" // Nome da tela que contém as abas
         component={TabNavigator}
         options={{ headerShown: false }}
       />
-
-      {/* Outras telas que podem ser acessadas fora do TabNavigator ou com navegação stack */}
-      <Stack.Screen name="Home" component={Home} />
-      <Stack.Screen name="OtherUserProfile" component={OtherUserProfileScreen} />
+      {/* Adicione outras telas que SÓ usuários logados podem acessar aqui,
+          se elas não fizerem parte das abas. Exemplo:
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      */}
     </Stack.Navigator>
   );
 }
