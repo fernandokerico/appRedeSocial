@@ -1,5 +1,5 @@
 // app_/CreatePostScreen.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -14,7 +14,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { getAuth } from 'firebase/auth';
 import { db } from '../firebaseConfig';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 
 // Importe o ImagePicker
 import * as ImagePicker from 'expo-image-picker';
@@ -29,13 +29,45 @@ export default function CreatePostScreen() {
     const [location, setLocation] = useState('');
     const [loading, setLoading] = useState(false);
     const [imagePicking, setImagePicking] = useState(false); // Novo estado para controle do ImagePicker
+    const [userNameFromFirestore, setUserNameFromFirestore] = useState('Usuário Desconhecido (Inicial)');
+
+    useEffect(() => {
+        const fetchUserName = async () => {
+            if (user) {
+                try {
+                    const userDocRef = doc(db, 'users', user.uid);
+                    const userDocSnap = await getDoc(userDocRef);
+                    
+                    if (userDocSnap.exists()) {
+                        const userData = userDocSnap.data();
+                        const fetchedName = userData.name; 
+
+                        if (fetchedName) {
+                            setUserNameFromFirestore(fetchedName);
+                        } else {
+                            setUserNameFromFirestore(user.email || 'Usuário Desconhecido (sem nome no Firestore)');
+                        }
+                    } else {
+                        setUserNameFromFirestore(user.email || 'Usuário Desconhecido (documento não existe)');
+                    }
+                } catch (error) {
+                    console.error("Erro ao buscar nome do usuário no Firestore:", error);
+                    setUserNameFromFirestore(user.email || 'Usuário Desconhecido (erro na busca)');
+                }
+            } else {
+                setUserNameFromFirestore('Usuário Desconhecido (Não Logado)');
+            }
+        };
+
+        fetchUserName();
+    }, [user]);
 
     // Função para selecionar imagem da galeria
     const pickImage = async () => {
         setImagePicking(true);
         try {
             let result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ImagePicker.MediaTypeOptions.Images, // Mantido como MediaTypeOptions
                 allowsEditing: true, // Permite cortar/editar a imagem
                 aspect: [4, 3], // Proporção do corte
                 quality: 1, // Qualidade da imagem (0 a 1)
@@ -65,7 +97,7 @@ export default function CreatePostScreen() {
             }
 
             let result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ImagePicker.MediaTypeOptions.Images, // Mantido como MediaTypeOptions
                 allowsEditing: true,
                 aspect: [4, 3],
                 quality: 1,
@@ -94,13 +126,16 @@ export default function CreatePostScreen() {
             return;
         }
 
+        if (imageUri && !imageUri.startsWith('http')) {
+            Alert.alert("Atenção", "A imagem selecionada só pode ser vista localmente. Para que outros vejam, ela precisa ser carregada para um serviço de armazenamento de imagens.");
+        }
+
         setLoading(true);
         try {
             await addDoc(collection(db, 'posts'), {
                 userId: user.uid,
-                userName: user.displayName || user.email,
+                userName: userNameFromFirestore, // Use o estado do nome do usuário do Firestore
                 description: description,
-                // Agora salva a URI local da imagem
                 imageUrl: imageUri, // O campo continua sendo 'imageUrl' para compatibilidade
                 location: location || null,
                 createdAt: serverTimestamp(),
@@ -123,6 +158,8 @@ export default function CreatePostScreen() {
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
             <Text style={styles.title}>Criar Nova Publicação</Text>
 
+            <Text style={styles.debugText}>Nome do Post (Preview): {userNameFromFirestore}</Text>
+
             <TextInput
                 style={styles.input}
                 placeholder="Escreva sua publicação aqui..."
@@ -132,7 +169,6 @@ export default function CreatePostScreen() {
                 onChangeText={setDescription}
             />
 
-            {/* Removido o TextInput para URL de imagem e adicionado botões de seleção */}
             <View style={styles.imagePickerButtons}>
                 <TouchableOpacity 
                     style={styles.pickImageButton} 
@@ -297,5 +333,10 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    debugText: {
+        fontSize: 14,
+        color: 'gray',
+        marginBottom: 10,
     },
 });

@@ -1,272 +1,320 @@
-// app_/FeedScreen.js (Sua tela principal de Feed)
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { getAuth } from "firebase/auth";
 import {
-    StyleSheet,
-    Text,
-    View,
-    ScrollView,
-    TouchableOpacity,
-    ActivityIndicator,
-    Image,
-    Alert
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { db } from '../firebaseConfig';
-import { collection, getDocs, orderBy, query, deleteDoc, doc } from 'firebase/firestore';
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+} from "firebase/firestore";
+import { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { db } from "../firebaseConfig";
 
 export default function FeedScreen() {
-    const navigation = useNavigation();
-    const auth = getAuth();
-    const [user, setUser] = useState(null);
-    const [posts, setPosts] = useState([]);
-    const [loadingPosts, setLoadingPosts] = useState(true);
+  const navigation = useNavigation();
+  const auth = getAuth();
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [usersProfileData, setUsersProfileData] = useState({});
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
+  const fetchPosts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const postsCollectionRef = collection(db, "posts");
+      const q = query(postsCollectionRef, orderBy("createdAt", "desc"));
+      const querySnapshot = await getDocs(q);
+
+      const fetchedPosts = [];
+      const userIdsToFetch = new Set();
+
+      querySnapshot.docs.forEach((postDoc) => {
+        const postData = { id: postDoc.id, ...postDoc.data() };
+        fetchedPosts.push(postData);
+        if (postData.userId) {
+          userIdsToFetch.add(postData.userId);
+        }
+      });
+
+      setUsersProfileData(prevUsersProfileData => {
+        const newUsersProfileData = { ...prevUsersProfileData };
+        
+        const fetchUserPromises = Array.from(userIdsToFetch).map(async (userId) => {
+          if (!newUsersProfileData[userId]) {
+            const userDocRef = doc(db, "users", userId);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+              newUsersProfileData[userId] = userDocSnap.data();
+            } else {
+              newUsersProfileData[userId] = { name: "Usuário Desconhecido", profileImageUrl: null };
+            }
+          }
         });
-        return () => unsubscribe();
-    }, []);
 
-    const fetchPosts = async () => {
-        setLoadingPosts(true);
-        try {
-            const postsCollectionRef = collection(db, 'posts');
-            const q = query(postsCollectionRef, orderBy('createdAt', 'desc'));
-            const querySnapshot = await getDocs(q);
-            const fetchedPosts = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setPosts(fetchedPosts);
-        } catch (error) {
-            console.error("Erro ao buscar posts:", error);
-            Alert.alert("Erro", "Não foi possível carregar as publicações.");
-        } finally {
-            setLoadingPosts(false);
-        }
-    };
+        return Promise.all(fetchUserPromises).then(() => {
+          const postsWithUserData = fetchedPosts.map((post) => {
+            const userData = newUsersProfileData[post.userId];
+            return {
+              ...post,
+              displayUserName: userData?.name || "Usuário Desconhecido",
+              displayProfileImageUrl: userData?.profileImageUrl || require("../assets/images/default-avatar.png"),
+            };
+          });
+          setPosts(postsWithUserData);
+          return newUsersProfileData;
+        });
+      });
 
-    useEffect(() => {
-        fetchPosts();
-    }, [user]);
+    } catch (error) {
+      console.error("Erro ao buscar posts:", error);
+      Alert.alert("Erro", "Não foi possível carregar as publicações.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []); // Vazio: fetchPosts não é recriado a cada mudança de usersProfileData
 
-    const handleDeletePost = (postId) => {
-        Alert.alert(
-            "Confirmar Exclusão",
-            "Tem certeza que deseja excluir esta publicação? Esta ação é irreversível.",
-            [
-                {
-                    text: "Cancelar",
-                    style: "cancel"
-                },
-                {
-                    text: "Excluir",
-                    onPress: async () => {
-                        try {
-                            if (!user) {
-                                Alert.alert("Erro", "Você precisa estar logado para excluir publicações.");
-                                navigation.navigate('Login');
-                                return;
-                            }
-                            
-                            const postRef = doc(db, 'posts', postId);
-                            await deleteDoc(postRef);
+  useFocusEffect(
+    useCallback(() => {
+      fetchPosts();
+      return () => {
+        // Cleanup function if needed (e.g., unsubscribe from listeners)
+      };
+    }, [fetchPosts])
+  );
 
-                            Alert.alert("Sucesso", "Publicação excluída com sucesso!");
-                            setPosts(posts.filter(p => p.id !== postId)); 
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setUsersProfileData({}); // Limpar o cache de usuários para garantir re-busca em refresh
+    fetchPosts();
+  }, [fetchPosts]);
 
-                        } catch (error) {
-                            console.error("Erro ao excluir publicação:", error);
-                            Alert.alert("Erro", "Não foi possível excluir a publicação. Tente novamente.");
-                        }
-                    }
-                }
-            ]
-        );
-    };
+  const handleDeletePost = async (postId) => {
+    try {
+      await deleteDoc(doc(db, "posts", postId));
+      fetchPosts(); // Recarrega os posts após a exclusão
+    } catch (error) {
+      console.error("Erro ao excluir post:", error);
+      Alert.alert("Erro", "Não foi possível excluir a publicação.");
+    }
+  };
 
-    const handleInteraction = () => {
-        if (!user) {
-            navigation.navigate('Login');
-        } else {
-            Alert.alert("Interação", "Usuário logado! Aqui você poderia curtir ou comentar.");
-        }
-    };
+  const renderPost = ({ item }) => (
+    <View style={styles.postCard}>
+      <TouchableOpacity
+        style={styles.postHeader}
+        onPress={() => {
+          const currentUserId = auth.currentUser?.uid;
+          if (item.userId === currentUserId) {
+            navigation.navigate("Profile");
+          } else {
+            navigation.navigate("OtherUserProfile", {
+              userId: item.userId,
+              userName: item.displayUserName,
+              profileImageUrl: typeof item.displayProfileImageUrl === "string" ? item.displayProfileImageUrl : null,
+            });
+          }
+        }}
+      >
+        <Image
+          source={
+            typeof item.displayProfileImageUrl === "string"
+              ? { uri: item.displayProfileImageUrl }
+              : item.displayProfileImageUrl
+          }
+          style={styles.postAvatar}
+        />
+        <Text style={styles.postUsername}>
+          {item.displayUserName}
+        </Text>
+      </TouchableOpacity>
 
-    // Nova função para navegar para o perfil de outro usuário
-    const navigateToOtherUserProfile = (userId, userName) => {
-        // Verifica se é o próprio usuário logado e navega para a tela de perfil padrão,
-        // ou para a tela de perfil de outro usuário.
-        if (user && user.uid === userId) {
-            navigation.navigate('Profile'); // Navega para seu próprio perfil
-        } else {
-            navigation.navigate('OtherUserProfile', { userId: userId, userName: userName });
-        }
-    };
+      <Text style={styles.postDescription}>{item.description}</Text>
 
-    return (
-        <SafeAreaView style={styles.safeArea}>
-            <ScrollView style={styles.scrollViewContent}>
-                <Text style={styles.title}>Feed de Publicações</Text>
-                <Text style={styles.subtitle}>
-                    Bem-vindo! Veja as últimas publicações.
-                </Text>
+      {item.imageUrl && (
+        <Image
+          source={{ uri: item.imageUrl }}
+          style={styles.postImage}
+          onError={(e) =>
+            console.log("Erro ao carregar imagem do post:", e.nativeEvent.error)
+          }
+        />
+      )}
 
-                {loadingPosts ? (
-                    <ActivityIndicator size="large" color="#0000ff" style={styles.loadingIndicator} />
-                ) : posts.length === 0 ? (
-                    <Text style={styles.noPostsText}>Nenhuma publicação encontrada ainda. Seja o primeiro a postar!</Text>
-                ) : (
-                    posts.map(post => (
-                        <View key={post.id} style={styles.postCard}>
-                            {/* Torna o nome do usuário clicável */}
-                            <TouchableOpacity onPress={() => navigateToOtherUserProfile(post.userId, post.userName)}>
-                                <Text style={styles.postUser}>{post.userName || 'Usuário Desconhecido'}</Text>
-                            </TouchableOpacity>
-                            
-                            <Text style={styles.postDescription}>{post.description}</Text>
-                            
-                            {post.imageUrl && (
-                                <Image 
-                                    source={{ uri: post.imageUrl }} 
-                                    style={styles.postImage} 
-                                    onError={(e) => console.log('Erro ao carregar imagem:', e.nativeEvent.error)}
-                                />
-                            )}
-                            
-                            {post.location && <Text style={styles.postDetail}>Local: {post.location}</Text>}
-                            {post.createdAt && post.createdAt.seconds && (
-                                <Text style={styles.postDate}>
-                                    {new Date(post.createdAt.seconds * 1000).toLocaleString()}
-                                </Text>
-                            )}
+      {item.location && (
+        <Text style={styles.postDetail}>Local: {item.location}</Text>
+      )}
+      {item.createdAt && item.createdAt.seconds && (
+        <Text style={styles.postDate}>
+          {new Date(item.createdAt.seconds * 1000).toLocaleString()}
+        </Text>
+      )}
 
-                            <View style={styles.postActions}>
-                                <TouchableOpacity style={styles.interactButton} onPress={handleInteraction}>
-                                    <Text style={styles.interactButtonText}>
-                                        {user ? "Curtir / Comentar" : "Login para Interagir"}
-                                    </Text>
-                                </TouchableOpacity>
+      {auth.currentUser?.uid === item.userId && (
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() =>
+            Alert.alert(
+              "Excluir Post",
+              "Tem certeza que deseja excluir esta publicação?",
+              [
+                { text: "Cancelar", style: "cancel" },
+                { text: "Excluir", onPress: () => handleDeletePost(item.id) },
+              ]
+            )
+          }
+        >
+          <Text style={styles.deleteButtonText}>Excluir Post</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
 
-                                {user && user.uid === post.userId && (
-                                    <TouchableOpacity 
-                                        style={styles.deleteButton} 
-                                        onPress={() => handleDeletePost(post.id)}
-                                    >
-                                        <Text style={styles.deleteButtonText}>Excluir</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        </View>
-                    ))
-                )}
-            </ScrollView>
-        </SafeAreaView>
-    );
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Feed de Publicações</Text>
+
+        {loading && posts.length === 0 ? (
+          <ActivityIndicator
+            size="large"
+            color="#0000ff"
+            style={styles.loadingIndicator}
+          />
+        ) : (
+          <FlatList
+            data={posts}
+            renderItem={renderPost}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={() => (
+              <Text style={styles.emptyFeedText}>
+                Nenhuma publicação ainda. Seja o primeiro a postar!
+              </Text>
+            )}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#0000ff"]}
+                tintColor={"#0000ff"}
+              />
+            }
+          />
+        )}
+      </View>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#f0f2f5',
-    },
-    scrollViewContent: {
-        flex: 1,
-        padding: 10,
-        paddingTop: 20,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#2c3e50',
-        marginBottom: 10,
-        textAlign: 'center',
-    },
-    subtitle: {
-        fontSize: 16,
-        color: '#7f8c8d',
-        textAlign: 'center',
-        marginBottom: 20,
-    },
-    loadingIndicator: {
-        marginTop: 50,
-    },
-    noPostsText: {
-        textAlign: 'center',
-        marginTop: 50,
-        fontSize: 18,
-        color: '#7f8c8d',
-    },
-    postCard: {
-        backgroundColor: '#ffffff',
-        padding: 15,
-        borderRadius: 10,
-        marginBottom: 15,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        elevation: 3,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-    },
-    postUser: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#3498db',
-        marginBottom: 5,
-    },
-    postDescription: {
-        fontSize: 16,
-        color: '#333',
-        marginBottom: 10,
-    },
-    postImage: {
-        width: '100%',
-        height: 200,
-        borderRadius: 8,
-        marginBottom: 10,
-        resizeMode: 'cover',
-    },
-    postDetail: {
-        fontSize: 14,
-        color: '#95a5a6',
-        marginTop: 5,
-    },
-    postDate: {
-        fontSize: 12,
-        color: '#b0b0b0',
-        marginTop: 5,
-        textAlign: 'right',
-    },
-    postActions: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 10,
-    },
-    interactButton: {
-        backgroundColor: '#ecf0f1',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 5,
-    },
-    interactButtonText: {
-        color: '#2c3e50',
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
-    deleteButton: {
-        backgroundColor: '#dc3545',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 5,
-    },
-    deleteButtonText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f0f2f5",
+  },
+  container: {
+    flex: 1,
+    padding: 10,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginVertical: 15,
+    color: "#333",
+  },
+  loadingIndicator: {
+    marginTop: 50,
+  },
+  listContent: {
+    paddingBottom: 20,
+  },
+  emptyFeedText: {
+    textAlign: "center",
+    marginTop: 50,
+    fontSize: 16,
+    color: "#7f8c8d",
+  },
+  postCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  postHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  postAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+    backgroundColor: "#e0e0e0",
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  postUsername: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  postDescription: {
+    fontSize: 16,
+    color: "#333",
+    marginBottom: 10,
+  },
+  postImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 10,
+    resizeMode: "cover",
+  },
+  postDetail: {
+    fontSize: 14,
+    color: "#95a5a6",
+    marginTop: 5,
+  },
+  postDate: {
+    fontSize: 12,
+    color: "#b0b0b0",
+    marginTop: 5,
+    textAlign: "right",
+  },
+  deleteButton: {
+    backgroundColor: "#dc3545",
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    marginTop: 10,
+    alignSelf: "flex-end",
+  },
+  deleteButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
 });
