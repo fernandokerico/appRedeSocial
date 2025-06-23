@@ -54,12 +54,12 @@ export default function FeedScreen() {
         }
       });
 
-      // Busca dados de perfil dos usuários
-      const newUsersProfileData = { ...usersProfileData }; // Começa com dados já cacheados
+     
+      const newUsersProfileData = { ...usersProfileData }; 
       const fetchUserPromises = Array.from(userIdsToFetch).map(
         async (userId) => {
           if (!newUsersProfileData[userId]) {
-            // Se o perfil não está no cache
+            
             const userDocRef = doc(db, "users", userId);
             const userDocSnap = await getDoc(userDocRef);
             if (userDocSnap.exists()) {
@@ -74,9 +74,9 @@ export default function FeedScreen() {
         }
       );
 
-      // Aguarda todos os perfis serem buscados antes de processar os posts
+      
       await Promise.all(fetchUserPromises);
-      setUsersProfileData(newUsersProfileData); // Atualiza o cache de perfis
+      setUsersProfileData(newUsersProfileData); 
 
       const postsWithUserData = fetchedPosts.map((post) => {
         const userData = newUsersProfileData[post.userId];
@@ -87,7 +87,7 @@ export default function FeedScreen() {
             userData?.profileImageUrl ||
             require("../assets/images/default-avatar.png"),
           likes: post.likes || [],
-          commentCount: post.commentCount || 0, // <-- GARANTIR QUE commentCount É LIDO
+          commentCount: post.commentCount || 0, 
         };
       });
       setPosts(postsWithUserData);
@@ -98,7 +98,7 @@ export default function FeedScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [usersProfileData]); // Adicione usersProfileData como dependência
+  }, [usersProfileData]); 
 
   const handleLikeToggle = useCallback(
     async (postId, currentLikes = []) => {
@@ -146,22 +146,20 @@ export default function FeedScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchPosts();
-      // Não há necessidade de um cleanup específico aqui para listeners de posts
-      // porque getDocs é uma chamada única.
-      // O cleanup para listeners de realtime (onSnapshot) estaria em um useEffect dedicado.
+      
     }, [fetchPosts])
   );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setUsersProfileData({}); // Limpar o cache de usuários para garantir re-busca em refresh
+    setUsersProfileData({}); 
     fetchPosts();
   }, [fetchPosts]);
 
   const handleDeletePost = async (postId) => {
     try {
       await deleteDoc(doc(db, "posts", postId));
-      fetchPosts(); // Recarrega os posts após a exclusão
+      fetchPosts(); 
     } catch (error) {
       console.error("Erro ao excluir post:", error);
       Alert.alert("Erro", "Não foi possível excluir a publicação.");

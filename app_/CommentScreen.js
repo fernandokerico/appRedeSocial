@@ -23,9 +23,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  // Remova SafeAreaView de 'react-native'
+
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"; // <-- NOVO: Importar de 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"; 
 import { db } from "../firebaseConfig";
 
 export default function CommentScreen() {
@@ -33,13 +33,12 @@ export default function CommentScreen() {
   const { postId } = route.params;
   const auth = getAuth();
   const currentUser = auth.currentUser;
-  const insets = useSafeAreaInsets(); // <-- NOVO: Hook para pegar as insets de segurança
+  const insets = useSafeAreaInsets(); 
 
   const [comments, setComments] = useState([]);
   const [newCommentText, setNewCommentText] = useState("");
   const [loadingComments, setLoadingComments] = useState(true);
 
-  // ... (o restante do seu código useEffect e handleAddComment permanece o mesmo)
   useEffect(() => {
     if (!postId) return;
 
@@ -135,7 +134,7 @@ export default function CommentScreen() {
   );
 
   return (
-    // <SafeAreaView style={commentStyles.safeArea}> // A SafeAreaView de 'react-native' pode ser removida
+
     <View style={commentStyles.fullScreenContainer}> 
       <Text style={commentStyles.title}>Comentários</Text>
 
@@ -162,7 +161,7 @@ export default function CommentScreen() {
       <View
         style={[
           commentStyles.inputContainer,
-          { paddingBottom: insets.bottom + 10 }, // <-- NOVO: Adiciona padding inferior baseado nas insets
+          { paddingBottom: insets.bottom + 10 }, 
         ]}
       >
         <TextInput
@@ -180,7 +179,7 @@ export default function CommentScreen() {
         </TouchableOpacity>
       </View>
     </View>
-    // </SafeAreaView> // Fechar a SafeAreaView de 'react-native' também
+ 
   );
 }
 
@@ -189,11 +188,11 @@ const commentStyles = StyleSheet.create({
   //   flex: 1,
   //   backgroundColor: "#f0f2f5",
   // },
-  fullScreenContainer: { // Novo container para a tela inteira, se necessário
+  fullScreenContainer: { 
     flex: 1,
     backgroundColor: "#f0f2f5",
   },
-  container: { // Este container original pode ser fundido com fullScreenContainer ou ajustado
+  container: { 
     flex: 1,
     padding: 10,
   },
@@ -209,7 +208,7 @@ const commentStyles = StyleSheet.create({
   },
   listContent: {
     flexGrow: 1,
-    paddingBottom: 10, // Ajuste este padding, ele será somado ao insets.bottom
+    paddingBottom: 10, 
   },
   emptyCommentsText: {
     textAlign: "center",
@@ -264,7 +263,7 @@ const commentStyles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#e0e0e0",
     backgroundColor: "#f0f2f5",
-    // Remova paddingBottom fixo daqui se houver, ele será definido dinamicamente
+    
   },
   commentInput: {
     flex: 1,

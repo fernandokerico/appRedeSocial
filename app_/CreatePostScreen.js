@@ -102,7 +102,7 @@ export default function CreatePostScreen() {
       if (geocodedAddress && geocodedAddress.length > 0) {
         const { formattedAddress, postalCode } = geocodedAddress[0];
 
-        // Remover o CEP da formattedAddress se ele existir
+       
         let cleanedAddress = formattedAddress;
         if (postalCode && formattedAddress.includes(postalCode)) {
           cleanedAddress = formattedAddress
@@ -110,7 +110,7 @@ export default function CreatePostScreen() {
             .trim();
           cleanedAddress = cleanedAddress.replace(`${postalCode}, `, "").trim();
           cleanedAddress = cleanedAddress.replace(`${postalCode}`, "").trim();
-          cleanedAddress = cleanedAddress.replace(/,\s*$/, "").trim(); // Remove vírgulas extras no final
+          cleanedAddress = cleanedAddress.replace(/,\s*$/, "").trim(); 
         }
 
         setLocation(cleanedAddress);

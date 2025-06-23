@@ -1,7 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
-// TODOS OS IMPORTS ABAIXO ESTÃO AJUSTADOS
+
 import CreatePostScreen from "../app_/CreatePostScreen";
 import FeedScreen from "../app_/FeedScreen";
 import ProfileScreen from "../app_/ProfileScreen";

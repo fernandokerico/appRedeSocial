@@ -1,10 +1,10 @@
 import { useNavigation } from "@react-navigation/native";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"; // Importe updateProfile
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"; 
 import { doc, setDoc } from "firebase/firestore";
 import { useState } from "react";
-import { Alert, SafeAreaView, StyleSheet, Text, View } from "react-native"; // Importe Alert aqui
-import { PrimaryButton, SecondaryButton } from "../components/Buttons"; // Mantenha Buttons se estiver usando
-import { EmailInput, PasswordInput } from "../components/CustomInputs"; // Mantenha CustomInputs se estiver usando
+import { Alert, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { PrimaryButton, SecondaryButton } from "../components/Buttons"; 
+import { EmailInput, PasswordInput } from "../components/CustomInputs"; 
 import { auth, db } from "../firebaseConfig";
 
 export default function Register() {
@@ -15,8 +15,8 @@ export default function Register() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState(""); // Estado para o nome
-  const [phone, setPhone] = useState(""); // Estado para o telefone
+  const [name, setName] = useState(""); 
+  const [phone, setPhone] = useState(""); 
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleRegister = async () => {
@@ -37,10 +37,9 @@ export default function Register() {
       return;
     }
 
-    setErrorMessage(""); // Limpa mensagens de erro anteriores
-
+    setErrorMessage(""); 
     try {
-      // 1. Criar o usuário no Firebase Authentication
+      
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -48,16 +47,14 @@ export default function Register() {
       );
       const user = userCredential.user;
 
-      // 2. Atualizar o perfil do usuário com o displayName (nome de exibição)
-      // ESTE É O PONTO CHAVE PARA O NOME APARECER NO PROFILESCREEN
+     
       await updateProfile(user, {
-        displayName: name, // Usa o 'name' do estado para o displayName
+        displayName: name, 
       });
 
-      // 3. Salvar informações adicionais (nome, telefone, email) no Firestore
-      // O UID do usuário é usado como ID do documento no Firestore para vincular
+      
       await setDoc(doc(db, "users", user.uid), {
-        name: name, // Salva o nome também no Firestore
+        name: name, 
         phone: phone,
         email: email,
       });
@@ -67,7 +64,7 @@ export default function Register() {
         "Usuário registrado e perfil atualizado com nome:",
         user.displayName
       );
-      navigation.replace("Login"); // Navega para a tela de Login após o registro
+      navigation.replace("Login"); 
     } catch (error) {
       let userFriendlyMessage =
         "Ocorreu um erro desconhecido durante o registro.";
@@ -89,7 +86,7 @@ export default function Register() {
       <View style={styles.container}>
         <Text style={styles.title}>Registrar-se</Text>
 
-        {/* Alterado: Usando EmailInput para o nome, que é um TextInput genérico */}
+        {}
         <EmailInput
           value={name}
           setValue={setName}
@@ -101,7 +98,7 @@ export default function Register() {
           setValue={setPassword}
           placeholder="Senha"
         />
-        {/* Alterado: Usando EmailInput para o telefone, que é um TextInput genérico */}
+        {}
         <EmailInput value={phone} setValue={setPhone} placeholder="Telefone" />
 
         {errorMessage && (

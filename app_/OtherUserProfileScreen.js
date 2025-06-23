@@ -1,4 +1,3 @@
-// app_/OtherUserProfileScreen.js
 import React, { useEffect, useState } from 'react';
 import {
     View,
@@ -6,19 +5,19 @@ import {
     StyleSheet,
     ActivityIndicator,
     ScrollView,
-    TouchableOpacity, // Para qualquer botão que você possa adicionar
-    Image, // Para exibir a foto de perfil do usuário ou imagens de posts
-    Alert // Para mensagens de erro/sucesso
+    TouchableOpacity, 
+    Image, 
+    Alert 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, useNavigation } from '@react-navigation/native'; // Para acessar os parâmetros da rota e navegação
-import { db } from '../firebaseConfig'; // Importe o db do Firestore
-import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore'; // Funções para Firestore
+import { useRoute, useNavigation } from '@react-navigation/native'; 
+import { db } from '../firebaseConfig'; 
+import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore'; 
 
 export default function OtherUserProfileScreen() {
-    const route = useRoute(); // Hook para acessar os parâmetros da rota
-    const navigation = useNavigation(); // Hook para navegação
-    const { userId, userName: initialUserName } = route.params; // Obter o userId e userName passados
+    const route = useRoute(); 
+    const navigation = useNavigation(); 
+    const { userId, userName: initialUserName } = route.params; 
 
     const [userData, setUserData] = useState(null);
     const [userPosts, setUserPosts] = useState([]);
@@ -27,7 +26,7 @@ export default function OtherUserProfileScreen() {
 
     useEffect(() => {
         const fetchUserProfileAndPosts = async () => {
-            // Buscar dados do perfil do usuário
+            
             setLoadingProfile(true);
             try {
                 const userDocRef = doc(db, 'users', userId);
@@ -45,12 +44,12 @@ export default function OtherUserProfileScreen() {
                 setLoadingProfile(false);
             }
 
-            // Buscar posts do usuário
+            
             setLoadingPosts(true);
             try {
                 const postsCollectionRef = collection(db, 'posts');
                 const q = query(postsCollectionRef,
-                                where('userId', '==', userId), // Filtra posts pelo userId
+                                where('userId', '==', userId), 
                                 orderBy('createdAt', 'desc'));
                 const querySnapshot = await getDocs(q);
                 const fetchedPosts = querySnapshot.docs.map(doc => ({
@@ -69,7 +68,7 @@ export default function OtherUserProfileScreen() {
         if (userId) {
             fetchUserProfileAndPosts();
         }
-    }, [userId]); // Re-executa sempre que o userId mudar
+    }, [userId]); 
 
     if (loadingProfile || loadingPosts) {
         return (
@@ -80,7 +79,7 @@ export default function OtherUserProfileScreen() {
         );
     }
 
-    // Se o perfil não for encontrado, pode exibir uma mensagem ou redirecionar
+    
     if (!userData) {
         return (
             <SafeAreaView style={styles.container}>
@@ -99,16 +98,16 @@ export default function OtherUserProfileScreen() {
                     <Text style={styles.backButtonTextHeader}>{"< Voltar"}</Text>
                 </TouchableOpacity>
 
-                {/* Seção do Perfil */}
+                {}
                 <View style={styles.profileHeader}>
-                    {/* Exemplo de onde a foto de perfil iria, se implementada */}
-                    {/* <Image source={{ uri: userData.avatarUrl || 'URL_PADRAO_AVATAR' }} style={styles.profileAvatar} /> */}
+                    {}
+                    {}
                     <Text style={styles.profileName}>{userData.fullName || initialUserName || 'Nome Desconhecido'}</Text>
                     <Text style={styles.profileDetail}>Email: {userData.email || 'Não informado'}</Text>
                     <Text style={styles.profileDetail}>Telefone: {userData.phone || 'Não informado'}</Text>
                 </View>
 
-                {/* Seção de Publicações do Usuário */}
+                {}
                 <Text style={styles.postsTitle}>Publicações de {userData.fullName || initialUserName}</Text>
                 
                 {userPosts.length === 0 ? (
@@ -116,7 +115,7 @@ export default function OtherUserProfileScreen() {
                 ) : (
                     userPosts.map(post => (
                         <View key={post.id} style={styles.postCard}>
-                            {/* Não há necessidade de clicar no próprio perfil aqui, pois já estamos nele */}
+                            {}
                             <Text style={styles.postDescription}>{post.description}</Text>
                             
                             {post.imageUrl && (
@@ -133,7 +132,7 @@ export default function OtherUserProfileScreen() {
                                     {new Date(post.createdAt.seconds * 1000).toLocaleString()}
                                 </Text>
                             )}
-                            {/* O botão de excluir não seria aqui, mas sim na tela de perfil do próprio usuário (ProfileScreen.js) */}
+                            {}
                         </View>
                     ))
                 )}
@@ -188,7 +187,7 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: '#e0e0e0', // Placeholder background
+        backgroundColor: '#e0e0e0', 
         marginBottom: 10,
     },
     profileName: {
@@ -252,13 +251,13 @@ const styles = StyleSheet.create({
         marginTop: 5,
         textAlign: 'right',
     },
-    backButton: { // Style for "Perfil Não Encontrado" screen
+    backButton: { 
         marginTop: 20,
         backgroundColor: '#007bff',
         padding: 10,
         borderRadius: 5,
     },
-    backButtonText: { // Style for "Perfil Não Encontrado" screen
+    backButtonText: { 
         color: '#fff',
         fontSize: 16,
     },
