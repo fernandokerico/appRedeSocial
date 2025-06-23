@@ -8,6 +8,9 @@ import {
   getDocs,
   orderBy,
   query,
+  updateDoc, // Importar updateDoc
+  arrayUnion, // Importar arrayUnion
+  arrayRemove, // Importar arrayRemove
 } from "firebase/firestore";
 import { useCallback, useState } from "react";
 import {
@@ -23,6 +26,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../firebaseConfig";
+import { Ionicons } from '@expo/vector-icons'; // Importar Ionicons
 
 export default function FeedScreen() {
   const navigation = useNavigation();
@@ -72,6 +76,7 @@ export default function FeedScreen() {
               ...post,
               displayUserName: userData?.name || "Usuário Desconhecido",
               displayProfileImageUrl: userData?.profileImageUrl || require("../assets/images/default-avatar.png"),
+              likes: post.likes || [], // Garante que 'likes' é sempre um array
             };
           });
           setPosts(postsWithUserData);
@@ -86,7 +91,54 @@ export default function FeedScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []); // Vazio: fetchPosts não é recriado a cada mudança de usersProfileData
+  }, []);
+
+  // --- Função para lidar com curtidas/descurtidas ---
+  const handleLikeToggle = useCallback(async (postId, currentLikes = []) => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+        Alert.alert("Erro", "Você precisa estar logado para curtir.");
+        return;
+    }
+
+    const postRef = doc(db, "posts", postId);
+    const hasLiked = currentLikes.includes(userId);
+
+    try {
+        if (hasLiked) {
+            // Descurtir
+            await updateDoc(postRef, {
+                likes: arrayRemove(userId)
+            });
+            // Atualiza o estado local para descurtir imediatamente na UI
+            setPosts(prevPosts =>
+                prevPosts.map(post =>
+                    post.id === postId
+                        ? { ...post, likes: post.likes.filter(id => id !== userId) }
+                        : post
+                )
+            );
+        } else {
+            // Curtir
+            await updateDoc(postRef, {
+                likes: arrayUnion(userId)
+            });
+            // Atualiza o estado local para curtir imediatamente na UI
+            setPosts(prevPosts =>
+                prevPosts.map(post =>
+                    post.id === postId
+                        ? { ...post, likes: [...(post.likes || []), userId] }
+                        : post
+                )
+            );
+        }
+    } catch (error) {
+        console.error("Erro ao curtir/descurtir:", error);
+        Alert.alert("Erro", "Não foi possível registrar sua curtida.");
+    }
+  }, [auth.currentUser?.uid]);
+  // --- Fim da função de curtidas ---
+
 
   useFocusEffect(
     useCallback(() => {
@@ -154,6 +206,19 @@ export default function FeedScreen() {
           }
         />
       )}
+
+      {/* Seção de Curtidas */}
+      <View style={styles.postActions}>
+          <TouchableOpacity onPress={() => handleLikeToggle(item.id, item.likes)}>
+              <Ionicons
+                  name={item.likes?.includes(auth.currentUser?.uid) ? "heart" : "heart-outline"}
+                  size={24}
+                  color={item.likes?.includes(auth.currentUser?.uid) ? "red" : "gray"}
+              />
+          </TouchableOpacity>
+          <Text style={styles.likesCount}>{item.likes?.length || 0} curtidas</Text>
+      </View>
+      {/* Fim da Seção de Curtidas */}
 
       {item.location && (
         <Text style={styles.postDetail}>Local: {item.location}</Text>
@@ -317,4 +382,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
   },
+  // --- Novos estilos para curtidas ---
+  postActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  likesCount: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#555",
+  },
+  // --- Fim dos novos estilos ---
 });
