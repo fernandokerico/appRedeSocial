@@ -3,14 +3,14 @@ import { getAuth } from "firebase/auth";
 import {
   addDoc,
   collection,
+  doc,
+  getDoc,
+  increment,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
-  doc,
-  getDoc,
   updateDoc,
-  increment,
 } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -23,9 +23,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"; 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { db } from "../firebaseConfig";
 
 export default function CommentScreen() {
@@ -33,11 +32,12 @@ export default function CommentScreen() {
   const { postId } = route.params;
   const auth = getAuth();
   const currentUser = auth.currentUser;
-  const insets = useSafeAreaInsets(); 
+  const insets = useSafeAreaInsets();
 
   const [comments, setComments] = useState([]);
   const [newCommentText, setNewCommentText] = useState("");
   const [loadingComments, setLoadingComments] = useState(true);
+  const [usersProfileCache, setUsersProfileCache] = useState({});
 
   useEffect(() => {
     if (!postId) return;
@@ -47,11 +47,67 @@ export default function CommentScreen() {
 
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
-        const fetchedComments = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+      async (snapshot) => {
+        const fetchedComments = [];
+        const userIdsToFetch = new Set();
+
+        snapshot.docs.forEach((commentDoc) => {
+          const commentData = commentDoc.data();
+          if (commentData.userId) {
+            userIdsToFetch.add(commentData.userId);
+          }
+        });
+
+        const newUsersToCache = {};
+        for (const userId of Array.from(userIdsToFetch)) {
+          if (!usersProfileCache[userId]) {
+            try {
+              const userDocRef = doc(db, "users", userId);
+              const userDocSnap = await getDoc(userDocRef);
+              if (userDocSnap.exists()) {
+                newUsersToCache[userId] = {
+                  name: userDocSnap.data().name || "Usuário Desconhecido",
+                  profileImageUrl: userDocSnap.data().profileImageUrl || null,
+                };
+              } else {
+                newUsersToCache[userId] = {
+                  name: "Usuário Desconhecido",
+                  profileImageUrl: null,
+                };
+              }
+            } catch (error) {
+              console.error(
+                `Erro ao buscar perfil do usuário ${userId}:`,
+                error
+              );
+              newUsersToCache[userId] = {
+                name: "Usuário Desconhecido",
+                profileImageUrl: null,
+              };
+            }
+          }
+        }
+        setUsersProfileCache((prevCache) => ({
+          ...prevCache,
+          ...newUsersToCache,
         }));
+
+        snapshot.docs.forEach((commentDoc) => {
+          const commentData = commentDoc.data();
+          const userProfile = usersProfileCache[commentData.userId] ||
+            newUsersToCache[commentData.userId] || {
+              name: "Usuário Desconhecido",
+              profileImageUrl: null,
+            };
+
+          fetchedComments.push({
+            id: commentDoc.id,
+            ...commentData,
+            userName: userProfile.name,
+            userProfileImageUrl: userProfile.profileImageUrl,
+          });
+        });
+
         setComments(fetchedComments);
         setLoadingComments(false);
       },
@@ -63,7 +119,7 @@ export default function CommentScreen() {
     );
 
     return () => unsubscribe();
-  }, [postId]);
+  }, [postId, usersProfileCache]);
 
   const handleAddComment = useCallback(async () => {
     if (!newCommentText.trim()) {
@@ -76,16 +132,33 @@ export default function CommentScreen() {
     }
 
     try {
-      let userNameToSave = currentUser.email || "Usuário Desconhecido";
-      let userProfileImageUrlToSave = null;
+      const userProfileFromCache = usersProfileCache[currentUser.uid] || {
+        name: "Usuário Desconhecido",
+        profileImageUrl: null,
+      };
 
-      if (currentUser.uid) {
-        const userDocRef = doc(db, 'users', currentUser.uid);
+      let userNameToSave = userProfileFromCache.name;
+      let userProfileImageUrlToSave = userProfileFromCache.profileImageUrl;
+
+      if (
+        !userProfileFromCache.name ||
+        userProfileFromCache.profileImageUrl === null
+      ) {
+        const userDocRef = doc(db, "users", currentUser.uid);
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
-          userNameToSave = userData.name || userData.email || userNameToSave;
+          userNameToSave = userData.name || currentUser.email || userNameToSave;
           userProfileImageUrlToSave = userData.profileImageUrl || null;
+          setUsersProfileCache((prevCache) => ({
+            ...prevCache,
+            [currentUser.uid]: {
+              name: userNameToSave,
+              profileImageUrl: userProfileImageUrlToSave,
+            },
+          }));
+        } else {
+          userNameToSave = currentUser.email || "Usuário Desconhecido";
         }
       }
 
@@ -107,7 +180,7 @@ export default function CommentScreen() {
       console.error("Erro ao adicionar comentário:", error);
       Alert.alert("Erro", "Não foi possível adicionar o comentário.");
     }
-  }, [newCommentText, postId, currentUser]);
+  }, [newCommentText, postId, currentUser, usersProfileCache]);
 
   const renderComment = ({ item }) => (
     <View style={commentStyles.commentCard}>
@@ -134,8 +207,7 @@ export default function CommentScreen() {
   );
 
   return (
-
-    <View style={commentStyles.fullScreenContainer}> 
+    <View style={commentStyles.fullScreenContainer}>
       <Text style={commentStyles.title}>Comentários</Text>
 
       {loadingComments ? (
@@ -161,7 +233,7 @@ export default function CommentScreen() {
       <View
         style={[
           commentStyles.inputContainer,
-          { paddingBottom: insets.bottom + 10 }, 
+          { paddingBottom: insets.bottom + 10 },
         ]}
       >
         <TextInput
@@ -179,20 +251,15 @@ export default function CommentScreen() {
         </TouchableOpacity>
       </View>
     </View>
- 
   );
 }
 
 const commentStyles = StyleSheet.create({
-  // safeArea: { // Remova ou comente este estilo se não for mais usado
-  //   flex: 1,
-  //   backgroundColor: "#f0f2f5",
-  // },
-  fullScreenContainer: { 
+  fullScreenContainer: {
     flex: 1,
     backgroundColor: "#f0f2f5",
   },
-  container: { 
+  container: {
     flex: 1,
     padding: 10,
   },
@@ -208,7 +275,7 @@ const commentStyles = StyleSheet.create({
   },
   listContent: {
     flexGrow: 1,
-    paddingBottom: 10, 
+    paddingBottom: 10,
   },
   emptyCommentsText: {
     textAlign: "center",
@@ -263,7 +330,6 @@ const commentStyles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#e0e0e0",
     backgroundColor: "#f0f2f5",
-    
   },
   commentInput: {
     flex: 1,
