@@ -3,14 +3,14 @@ import { getAuth } from "firebase/auth";
 import {
   addDoc,
   collection,
-  doc,
-  getDoc, // <-- NOVO: Importar updateDoc
-  increment,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
-  updateDoc, // <-- NOVO: Importar updateDoc
+  doc,
+  getDoc,
+  updateDoc,
+  increment,
 } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -18,13 +18,14 @@ import {
   Alert,
   FlatList,
   Image,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  // Remova SafeAreaView de 'react-native'
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"; // <-- NOVO: Importar de 'react-native-safe-area-context'
 import { db } from "../firebaseConfig";
 
 export default function CommentScreen() {
@@ -32,12 +33,13 @@ export default function CommentScreen() {
   const { postId } = route.params;
   const auth = getAuth();
   const currentUser = auth.currentUser;
+  const insets = useSafeAreaInsets(); // <-- NOVO: Hook para pegar as insets de segurança
 
   const [comments, setComments] = useState([]);
   const [newCommentText, setNewCommentText] = useState("");
   const [loadingComments, setLoadingComments] = useState(true);
 
-  // Função para buscar e ouvir comentários em tempo real
+  // ... (o restante do seu código useEffect e handleAddComment permanece o mesmo)
   useEffect(() => {
     if (!postId) return;
 
@@ -79,7 +81,7 @@ export default function CommentScreen() {
       let userProfileImageUrlToSave = null;
 
       if (currentUser.uid) {
-        const userDocRef = doc(db, "users", currentUser.uid);
+        const userDocRef = doc(db, 'users', currentUser.uid);
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
@@ -88,7 +90,6 @@ export default function CommentScreen() {
         }
       }
 
-      // Adicionar o comentário à subcoleção
       await addDoc(collection(db, "posts", postId, "comments"), {
         userId: currentUser.uid,
         userName: userNameToSave,
@@ -97,12 +98,10 @@ export default function CommentScreen() {
         createdAt: serverTimestamp(),
       });
 
-      // <-- NOVO: Atualizar o contador de comentários no documento do post pai -->
       const postRef = doc(db, "posts", postId);
       await updateDoc(postRef, {
-        commentCount: increment(1), // Incrementa o contador em 1
+        commentCount: increment(1),
       });
-      // <-- FIM DO NOVO AJUSTE -->
 
       setNewCommentText("");
     } catch (error) {
@@ -136,56 +135,65 @@ export default function CommentScreen() {
   );
 
   return (
-    <SafeAreaView style={commentStyles.safeArea}>
-      <View style={commentStyles.container}>
-        <Text style={commentStyles.title}>Comentários</Text>
+    // <SafeAreaView style={commentStyles.safeArea}> // A SafeAreaView de 'react-native' pode ser removida
+    <View style={commentStyles.fullScreenContainer}> 
+      <Text style={commentStyles.title}>Comentários</Text>
 
-        {loadingComments ? (
-          <ActivityIndicator
-            size="large"
-            color="#0000ff"
-            style={commentStyles.loadingIndicator}
-          />
-        ) : (
-          <FlatList
-            data={comments}
-            renderItem={renderComment}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={commentStyles.listContent}
-            ListEmptyComponent={() => (
-              <Text style={commentStyles.emptyCommentsText}>
-                Nenhum comentário ainda. Seja o primeiro a comentar!
-              </Text>
-            )}
-          />
-        )}
+      {loadingComments ? (
+        <ActivityIndicator
+          size="large"
+          color="#0000ff"
+          style={commentStyles.loadingIndicator}
+        />
+      ) : (
+        <FlatList
+          data={comments}
+          renderItem={renderComment}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={commentStyles.listContent}
+          ListEmptyComponent={() => (
+            <Text style={commentStyles.emptyCommentsText}>
+              Nenhum comentário ainda. Seja o primeiro a comentar!
+            </Text>
+          )}
+        />
+      )}
 
-        <View style={commentStyles.inputContainer}>
-          <TextInput
-            style={commentStyles.commentInput}
-            placeholder="Adicione um comentário..."
-            value={newCommentText}
-            onChangeText={setNewCommentText}
-            multiline
-          />
-          <TouchableOpacity
-            style={commentStyles.sendButton}
-            onPress={handleAddComment}
-          >
-            <Text style={commentStyles.sendButtonText}>Publicar</Text>
-          </TouchableOpacity>
-        </View>
+      <View
+        style={[
+          commentStyles.inputContainer,
+          { paddingBottom: insets.bottom + 10 }, // <-- NOVO: Adiciona padding inferior baseado nas insets
+        ]}
+      >
+        <TextInput
+          style={commentStyles.commentInput}
+          placeholder="Adicione um comentário..."
+          value={newCommentText}
+          onChangeText={setNewCommentText}
+          multiline
+        />
+        <TouchableOpacity
+          style={commentStyles.sendButton}
+          onPress={handleAddComment}
+        >
+          <Text style={commentStyles.sendButtonText}>Publicar</Text>
+        </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
+    // </SafeAreaView> // Fechar a SafeAreaView de 'react-native' também
   );
 }
 
 const commentStyles = StyleSheet.create({
-  safeArea: {
+  // safeArea: { // Remova ou comente este estilo se não for mais usado
+  //   flex: 1,
+  //   backgroundColor: "#f0f2f5",
+  // },
+  fullScreenContainer: { // Novo container para a tela inteira, se necessário
     flex: 1,
     backgroundColor: "#f0f2f5",
   },
-  container: {
+  container: { // Este container original pode ser fundido com fullScreenContainer ou ajustado
     flex: 1,
     padding: 10,
   },
@@ -201,7 +209,7 @@ const commentStyles = StyleSheet.create({
   },
   listContent: {
     flexGrow: 1,
-    paddingBottom: 10,
+    paddingBottom: 10, // Ajuste este padding, ele será somado ao insets.bottom
   },
   emptyCommentsText: {
     textAlign: "center",
@@ -256,6 +264,7 @@ const commentStyles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#e0e0e0",
     backgroundColor: "#f0f2f5",
+    // Remova paddingBottom fixo daqui se houver, ele será definido dinamicamente
   },
   commentInput: {
     flex: 1,

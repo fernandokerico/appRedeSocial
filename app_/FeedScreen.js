@@ -1,6 +1,9 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { getAuth } from "firebase/auth";
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -9,8 +12,6 @@ import {
   orderBy,
   query,
   updateDoc,
-  arrayUnion,
-  arrayRemove,
 } from "firebase/firestore";
 import { useCallback, useState } from "react";
 import {
@@ -26,7 +27,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../firebaseConfig";
-import { Ionicons } from '@expo/vector-icons';
 
 export default function FeedScreen() {
   const navigation = useNavigation();
@@ -56,17 +56,23 @@ export default function FeedScreen() {
 
       // Busca dados de perfil dos usuários
       const newUsersProfileData = { ...usersProfileData }; // Começa com dados já cacheados
-      const fetchUserPromises = Array.from(userIdsToFetch).map(async (userId) => {
-        if (!newUsersProfileData[userId]) { // Se o perfil não está no cache
-          const userDocRef = doc(db, "users", userId);
-          const userDocSnap = await getDoc(userDocRef);
-          if (userDocSnap.exists()) {
-            newUsersProfileData[userId] = userDocSnap.data();
-          } else {
-            newUsersProfileData[userId] = { name: "Usuário Desconhecido", profileImageUrl: null };
+      const fetchUserPromises = Array.from(userIdsToFetch).map(
+        async (userId) => {
+          if (!newUsersProfileData[userId]) {
+            // Se o perfil não está no cache
+            const userDocRef = doc(db, "users", userId);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+              newUsersProfileData[userId] = userDocSnap.data();
+            } else {
+              newUsersProfileData[userId] = {
+                name: "Usuário Desconhecido",
+                profileImageUrl: null,
+              };
+            }
           }
         }
-      });
+      );
 
       // Aguarda todos os perfis serem buscados antes de processar os posts
       await Promise.all(fetchUserPromises);
@@ -77,13 +83,14 @@ export default function FeedScreen() {
         return {
           ...post,
           displayUserName: userData?.name || "Usuário Desconhecido",
-          displayProfileImageUrl: userData?.profileImageUrl || require("../assets/images/default-avatar.png"),
+          displayProfileImageUrl:
+            userData?.profileImageUrl ||
+            require("../assets/images/default-avatar.png"),
           likes: post.likes || [],
           commentCount: post.commentCount || 0, // <-- GARANTIR QUE commentCount É LIDO
         };
       });
       setPosts(postsWithUserData);
-
     } catch (error) {
       console.error("Erro ao buscar posts:", error);
       Alert.alert("Erro", "Não foi possível carregar as publicações.");
@@ -93,45 +100,48 @@ export default function FeedScreen() {
     }
   }, [usersProfileData]); // Adicione usersProfileData como dependência
 
-  const handleLikeToggle = useCallback(async (postId, currentLikes = []) => {
-    const userId = auth.currentUser?.uid;
-    if (!userId) {
+  const handleLikeToggle = useCallback(
+    async (postId, currentLikes = []) => {
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
         Alert.alert("Erro", "Você precisa estar logado para curtir.");
         return;
-    }
+      }
 
-    const postRef = doc(db, "posts", postId);
-    const hasLiked = currentLikes.includes(userId);
+      const postRef = doc(db, "posts", postId);
+      const hasLiked = currentLikes.includes(userId);
 
-    try {
+      try {
         if (hasLiked) {
-            await updateDoc(postRef, {
-                likes: arrayRemove(userId)
-            });
-            setPosts(prevPosts =>
-                prevPosts.map(post =>
-                    post.id === postId
-                        ? { ...post, likes: post.likes.filter(id => id !== userId) }
-                        : post
-                )
-            );
+          await updateDoc(postRef, {
+            likes: arrayRemove(userId),
+          });
+          setPosts((prevPosts) =>
+            prevPosts.map((post) =>
+              post.id === postId
+                ? { ...post, likes: post.likes.filter((id) => id !== userId) }
+                : post
+            )
+          );
         } else {
-            await updateDoc(postRef, {
-                likes: arrayUnion(userId)
-            });
-            setPosts(prevPosts =>
-                prevPosts.map(post =>
-                    post.id === postId
-                        ? { ...post, likes: [...(post.likes || []), userId] }
-                        : post
-                )
-            );
+          await updateDoc(postRef, {
+            likes: arrayUnion(userId),
+          });
+          setPosts((prevPosts) =>
+            prevPosts.map((post) =>
+              post.id === postId
+                ? { ...post, likes: [...(post.likes || []), userId] }
+                : post
+            )
+          );
         }
-    } catch (error) {
+      } catch (error) {
         console.error("Erro ao curtir/descurtir:", error);
         Alert.alert("Erro", "Não foi possível registrar sua curtida.");
-    }
-  }, [auth.currentUser?.uid]);
+      }
+    },
+    [auth.currentUser?.uid]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -170,7 +180,10 @@ export default function FeedScreen() {
             navigation.navigate("OtherUserProfile", {
               userId: item.userId,
               userName: item.displayUserName,
-              profileImageUrl: typeof item.displayProfileImageUrl === "string" ? item.displayProfileImageUrl : null,
+              profileImageUrl:
+                typeof item.displayProfileImageUrl === "string"
+                  ? item.displayProfileImageUrl
+                  : null,
             });
           }
         }}
@@ -183,9 +196,7 @@ export default function FeedScreen() {
           }
           style={styles.postAvatar}
         />
-        <Text style={styles.postUsername}>
-          {item.displayUserName}
-        </Text>
+        <Text style={styles.postUsername}>{item.displayUserName}</Text>
       </TouchableOpacity>
 
       <Text style={styles.postDescription}>{item.description}</Text>
@@ -200,30 +211,37 @@ export default function FeedScreen() {
         />
       )}
 
-      {/* Seção de Curtidas e Comentários */}
       <View style={styles.postActions}>
-          <View style={styles.actionItem}>
-            <TouchableOpacity onPress={() => handleLikeToggle(item.id, item.likes)}>
-                <Ionicons
-                    name={item.likes?.includes(auth.currentUser?.uid) ? "heart" : "heart-outline"}
-                    size={24}
-                    color={item.likes?.includes(auth.currentUser?.uid) ? "red" : "gray"}
-                />
-            </TouchableOpacity>
-            <Text style={styles.likesCount}>{item.likes?.length || 0}</Text>
-          </View>
+        <View style={styles.actionItem}>
+          <TouchableOpacity
+            onPress={() => handleLikeToggle(item.id, item.likes)}
+          >
+            <Ionicons
+              name={
+                item.likes?.includes(auth.currentUser?.uid)
+                  ? "heart"
+                  : "heart-outline"
+              }
+              size={24}
+              color={
+                item.likes?.includes(auth.currentUser?.uid) ? "red" : "gray"
+              }
+            />
+          </TouchableOpacity>
+          <Text style={styles.likesCount}>{item.likes?.length || 0}</Text>
+        </View>
 
-          {/* Botão de Comentários */}
-          <View style={styles.actionItem}>
-            <TouchableOpacity
-                onPress={() => navigation.navigate("CommentScreen", { postId: item.id })}
-            >
-                <Ionicons name="chatbubble-outline" size={24} color="gray" />
-            </TouchableOpacity>
-            <Text style={styles.commentCount}>{item.commentCount || 0}</Text>
-          </View>
+        <View style={styles.actionItem}>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("CommentScreen", { postId: item.id })
+            }
+          >
+            <Ionicons name="chatbubble-outline" size={24} color="gray" />
+          </TouchableOpacity>
+          <Text style={styles.commentCount}>{item.commentCount || 0}</Text>
+        </View>
       </View>
-      {/* Fim da Seção de Curtidas e Comentários */}
 
       {item.location && (
         <Text style={styles.postDetail}>Local: {item.location}</Text>
