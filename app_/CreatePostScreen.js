@@ -1,5 +1,4 @@
-// app_/CreatePostScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -8,16 +7,16 @@ import {
     TextInput,
     Alert,
     ScrollView,
-    Image, // Importe Image para exibir a miniatura
-    ActivityIndicator // Para indicar carregamento ao selecionar imagem ou postar
+    Image,
+    ActivityIndicator
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { getAuth } from 'firebase/auth';
 import { db } from '../firebaseConfig';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 
-// Importe o ImagePicker
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 
 export default function CreatePostScreen() {
     const navigation = useNavigation();
@@ -25,11 +24,12 @@ export default function CreatePostScreen() {
     const user = auth.currentUser;
 
     const [description, setDescription] = useState('');
-    const [imageUri, setImageUri] = useState(null); // Agora armazena a URI local da imagem
+    const [imageUri, setImageUri] = useState(null);
     const [location, setLocation] = useState('');
     const [loading, setLoading] = useState(false);
-    const [imagePicking, setImagePicking] = useState(false); // Novo estado para controle do ImagePicker
-    const [userNameFromFirestore, setUserNameFromFirestore] = useState('Usuário Desconhecido (Inicial)');
+    const [imagePicking, setImagePicking] = useState(false);
+    const [userNameFromFirestore, setUserNameFromFirestore] = useState('Carregando...');
+    const [loadingLocation, setLoadingLocation] = useState(false);
 
     useEffect(() => {
         const fetchUserName = async () => {
@@ -41,40 +41,95 @@ export default function CreatePostScreen() {
                     if (userDocSnap.exists()) {
                         const userData = userDocSnap.data();
                         const fetchedName = userData.name; 
-
                         if (fetchedName) {
                             setUserNameFromFirestore(fetchedName);
                         } else {
-                            setUserNameFromFirestore(user.email || 'Usuário Desconhecido (sem nome no Firestore)');
+                            setUserNameFromFirestore(user.email || 'Usuário Desconhecido');
                         }
                     } else {
-                        setUserNameFromFirestore(user.email || 'Usuário Desconhecido (documento não existe)');
+                        setUserNameFromFirestore(user.email || 'Usuário Desconhecido');
                     }
                 } catch (error) {
                     console.error("Erro ao buscar nome do usuário no Firestore:", error);
-                    setUserNameFromFirestore(user.email || 'Usuário Desconhecido (erro na busca)');
+                    setUserNameFromFirestore(user.email || 'Usuário Desconhecido');
                 }
             } else {
-                setUserNameFromFirestore('Usuário Desconhecido (Não Logado)');
+                setUserNameFromFirestore('Não Logado');
             }
         };
 
         fetchUserName();
     }, [user]);
 
-    // Função para selecionar imagem da galeria
+    const fetchLocation = useCallback(async () => {
+        setLoadingLocation(true);
+        let { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status !== 'granted') {
+            Alert.alert(
+                'Permissão Necessária',
+                'Para usar sua localização, por favor, habilite a permissão nas configurações do seu dispositivo.'
+            );
+            setLoadingLocation(false);
+            return;
+        }
+
+        try {
+            let currentLocation = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+
+            if (!currentLocation || !currentLocation.coords) {
+                Alert.alert("Erro de Localização", "Não foi possível obter coordenadas válidas. Tente novamente.");
+                setLoadingLocation(false);
+                return;
+            }
+            
+            let geocodedAddress = await Location.reverseGeocodeAsync(currentLocation.coords);
+
+            if (geocodedAddress && geocodedAddress.length > 0) {
+                const { formattedAddress, postalCode } = geocodedAddress[0];
+                
+                // Remover o CEP da formattedAddress se ele existir
+                let cleanedAddress = formattedAddress;
+                if (postalCode && formattedAddress.includes(postalCode)) {
+                    cleanedAddress = formattedAddress.replace(`, ${postalCode}`, '').trim();
+                    cleanedAddress = cleanedAddress.replace(`${postalCode}, `, '').trim();
+                    cleanedAddress = cleanedAddress.replace(`${postalCode}`, '').trim();
+                    cleanedAddress = cleanedAddress.replace(/,\s*$/, '').trim(); // Remove vírgulas extras no final
+                }
+
+                setLocation(cleanedAddress);
+                Alert.alert("Localização", `Localização atual preenchida: ${cleanedAddress}`);
+            } else {
+                setLocation('');
+                Alert.alert("Localização", "Não foi possível encontrar um endereço para sua localização.");
+            }
+        } catch (error) {
+            console.error("Erro na fetchLocation:", error);
+            Alert.alert("Erro de Localização", "Não foi possível obter sua localização atual.");
+            setLocation('');
+        } finally {
+            setLoadingLocation(false);
+        }
+    }, []);
+
     const pickImage = async () => {
         setImagePicking(true);
         try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permissão Necessária', 'Precisamos da permissão da sua galeria para escolher uma imagem.');
+                setImagePicking(false);
+                return;
+            }
+
             let result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images, // Mantido como MediaTypeOptions
-                allowsEditing: true, // Permite cortar/editar a imagem
-                aspect: [4, 3], // Proporção do corte
-                quality: 1, // Qualidade da imagem (0 a 1)
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 1,
             });
 
             if (!result.canceled) {
-                // 'uri' é o caminho local da imagem selecionada
                 setImageUri(result.assets[0].uri);
             }
         } catch (error) {
@@ -85,19 +140,18 @@ export default function CreatePostScreen() {
         }
     };
 
-    // Função para tirar foto com a câmera (opcional, mas útil)
     const takePhoto = async () => {
         setImagePicking(true);
         try {
             const { status } = await ImagePicker.requestCameraPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert("Permissão necessária", "Precisamos da permissão da câmera para tirar fotos.");
+                Alert.alert("Permissão Necessária", "Precisamos da permissão da câmera para tirar fotos.");
                 setImagePicking(false);
                 return;
             }
 
             let result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images, // Mantido como MediaTypeOptions
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
                 aspect: [4, 3],
                 quality: 1,
@@ -126,6 +180,11 @@ export default function CreatePostScreen() {
             return;
         }
 
+        if (!imageUri) {
+            Alert.alert("Atenção", "Por favor, selecione ou tire uma foto para a publicação.");
+            return;
+        }
+
         if (imageUri && !imageUri.startsWith('http')) {
             Alert.alert("Atenção", "A imagem selecionada só pode ser vista localmente. Para que outros vejam, ela precisa ser carregada para um serviço de armazenamento de imagens.");
         }
@@ -134,16 +193,18 @@ export default function CreatePostScreen() {
         try {
             await addDoc(collection(db, 'posts'), {
                 userId: user.uid,
-                userName: userNameFromFirestore, // Use o estado do nome do usuário do Firestore
-                description: description,
-                imageUrl: imageUri, // O campo continua sendo 'imageUrl' para compatibilidade
-                location: location || null,
+                userName: userNameFromFirestore,
+                description: description.trim(),
+                imageUrl: imageUri,
+                location: location.trim() || null,
                 createdAt: serverTimestamp(),
+                likes: [],
+                commentCount: 0,
             });
 
             Alert.alert("Sucesso", "Publicação criada com sucesso!");
             setDescription('');
-            setImageUri(null); // Limpa a URI da imagem
+            setImageUri(null);
             setLocation('');
             navigation.navigate('Feed');
         } catch (error) {
@@ -157,8 +218,6 @@ export default function CreatePostScreen() {
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
             <Text style={styles.title}>Criar Nova Publicação</Text>
-
-            <Text style={styles.debugText}>Nome do Post (Preview): {userNameFromFirestore}</Text>
 
             <TextInput
                 style={styles.input}
@@ -186,7 +245,7 @@ export default function CreatePostScreen() {
                 </TouchableOpacity>
             </View>
             
-            {imagePicking && <ActivityIndicator size="small" color="#0000ff" style={{ marginTop: 10 }} />}
+            {imagePicking && <ActivityIndicator size="small" color="#0000ff" style={styles.activityIndicator} />}
 
             {imageUri && (
                 <View style={styles.imagePreviewContainer}>
@@ -197,22 +256,35 @@ export default function CreatePostScreen() {
                 </View>
             )}
 
-            <TextInput
-                style={styles.input}
-                placeholder="Localização (opcional)"
-                value={location}
-                onChangeText={setLocation}
-            />
+            <View style={styles.locationInputContainer}>
+                <TextInput
+                    style={styles.locationInput}
+                    placeholder="Localização (opcional)"
+                    value={location}
+                    onChangeText={setLocation}
+                />
+                <TouchableOpacity
+                    style={styles.locationButton}
+                    onPress={fetchLocation}
+                    disabled={loadingLocation || loading}
+                >
+                    {loadingLocation ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text style={styles.locationButtonText}>Usar Localização Atual</Text>
+                    )}
+                </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
                 style={styles.button}
                 onPress={handleCreatePost}
-                disabled={loading || imagePicking}
+                disabled={loading || imagePicking || loadingLocation}
             >
                 {loading ? (
-                    <Text style={styles.buttonText}>Salvando...</Text>
+                    <ActivityIndicator color="#fff" />
                 ) : (
-                    <Text style={styles.buttonText}>Publicar</Text>
+                    <Text style={styles.buttonText}>Publicar Treino</Text>
                 )}
             </TouchableOpacity>
 
@@ -261,7 +333,7 @@ const styles = StyleSheet.create({
         marginBottom: 15,
     },
     pickImageButton: {
-        backgroundColor: '#007bff', // Azul para os botões de imagem
+        backgroundColor: '#007bff',
         padding: 12,
         borderRadius: 8,
         flex: 1,
@@ -273,6 +345,9 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
+    activityIndicator: {
+        marginTop: 10,
+    },
     imagePreviewContainer: {
         marginTop: 10,
         marginBottom: 15,
@@ -283,12 +358,12 @@ const styles = StyleSheet.create({
         width: 200,
         height: 150,
         borderRadius: 8,
-        resizeMode: 'cover', // Garante que a imagem preencha a área
+        resizeMode: 'cover',
         borderWidth: 1,
         borderColor: '#ddd',
     },
     removeImageButton: {
-        backgroundColor: '#dc3545', // Vermelho
+        backgroundColor: '#dc3545',
         paddingVertical: 8,
         paddingHorizontal: 15,
         borderRadius: 5,
@@ -298,8 +373,38 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 14,
     },
-    button: {
+    locationInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+        marginBottom: 15,
+    },
+    locationInput: {
+        flex: 1,
+        height: 50,
+        borderColor: '#ced4da',
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 15,
+        backgroundColor: '#fff',
+        marginRight: 10,
+        fontSize: 16,
+        color: '#495057',
+    },
+    locationButton: {
         backgroundColor: '#28a745',
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    locationButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    button: {
+        backgroundColor: '#27428f',
         padding: 15,
         borderRadius: 8,
         width: '100%',
@@ -333,10 +438,5 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
-    },
-    debugText: {
-        fontSize: 14,
-        color: 'gray',
-        marginBottom: 10,
     },
 });
