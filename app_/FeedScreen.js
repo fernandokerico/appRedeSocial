@@ -8,9 +8,9 @@ import {
   getDocs,
   orderBy,
   query,
-  updateDoc, // Importar updateDoc
-  arrayUnion, // Importar arrayUnion
-  arrayRemove, // Importar arrayRemove
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 import { useCallback, useState } from "react";
 import {
@@ -26,7 +26,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { db } from "../firebaseConfig";
-import { Ionicons } from '@expo/vector-icons'; // Importar Ionicons
+import { Ionicons } from '@expo/vector-icons';
 
 export default function FeedScreen() {
   const navigation = useNavigation();
@@ -54,35 +54,35 @@ export default function FeedScreen() {
         }
       });
 
-      setUsersProfileData(prevUsersProfileData => {
-        const newUsersProfileData = { ...prevUsersProfileData };
-        
-        const fetchUserPromises = Array.from(userIdsToFetch).map(async (userId) => {
-          if (!newUsersProfileData[userId]) {
-            const userDocRef = doc(db, "users", userId);
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-              newUsersProfileData[userId] = userDocSnap.data();
-            } else {
-              newUsersProfileData[userId] = { name: "Usuário Desconhecido", profileImageUrl: null };
-            }
+      // Busca dados de perfil dos usuários
+      const newUsersProfileData = { ...usersProfileData }; // Começa com dados já cacheados
+      const fetchUserPromises = Array.from(userIdsToFetch).map(async (userId) => {
+        if (!newUsersProfileData[userId]) { // Se o perfil não está no cache
+          const userDocRef = doc(db, "users", userId);
+          const userDocSnap = await getDoc(userDocRef);
+          if (userDocSnap.exists()) {
+            newUsersProfileData[userId] = userDocSnap.data();
+          } else {
+            newUsersProfileData[userId] = { name: "Usuário Desconhecido", profileImageUrl: null };
           }
-        });
-
-        return Promise.all(fetchUserPromises).then(() => {
-          const postsWithUserData = fetchedPosts.map((post) => {
-            const userData = newUsersProfileData[post.userId];
-            return {
-              ...post,
-              displayUserName: userData?.name || "Usuário Desconhecido",
-              displayProfileImageUrl: userData?.profileImageUrl || require("../assets/images/default-avatar.png"),
-              likes: post.likes || [], // Garante que 'likes' é sempre um array
-            };
-          });
-          setPosts(postsWithUserData);
-          return newUsersProfileData;
-        });
+        }
       });
+
+      // Aguarda todos os perfis serem buscados antes de processar os posts
+      await Promise.all(fetchUserPromises);
+      setUsersProfileData(newUsersProfileData); // Atualiza o cache de perfis
+
+      const postsWithUserData = fetchedPosts.map((post) => {
+        const userData = newUsersProfileData[post.userId];
+        return {
+          ...post,
+          displayUserName: userData?.name || "Usuário Desconhecido",
+          displayProfileImageUrl: userData?.profileImageUrl || require("../assets/images/default-avatar.png"),
+          likes: post.likes || [],
+          commentCount: post.commentCount || 0, // <-- GARANTIR QUE commentCount É LIDO
+        };
+      });
+      setPosts(postsWithUserData);
 
     } catch (error) {
       console.error("Erro ao buscar posts:", error);
@@ -91,9 +91,8 @@ export default function FeedScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [usersProfileData]); // Adicione usersProfileData como dependência
 
-  // --- Função para lidar com curtidas/descurtidas ---
   const handleLikeToggle = useCallback(async (postId, currentLikes = []) => {
     const userId = auth.currentUser?.uid;
     if (!userId) {
@@ -106,11 +105,9 @@ export default function FeedScreen() {
 
     try {
         if (hasLiked) {
-            // Descurtir
             await updateDoc(postRef, {
                 likes: arrayRemove(userId)
             });
-            // Atualiza o estado local para descurtir imediatamente na UI
             setPosts(prevPosts =>
                 prevPosts.map(post =>
                     post.id === postId
@@ -119,11 +116,9 @@ export default function FeedScreen() {
                 )
             );
         } else {
-            // Curtir
             await updateDoc(postRef, {
                 likes: arrayUnion(userId)
             });
-            // Atualiza o estado local para curtir imediatamente na UI
             setPosts(prevPosts =>
                 prevPosts.map(post =>
                     post.id === postId
@@ -137,15 +132,13 @@ export default function FeedScreen() {
         Alert.alert("Erro", "Não foi possível registrar sua curtida.");
     }
   }, [auth.currentUser?.uid]);
-  // --- Fim da função de curtidas ---
-
 
   useFocusEffect(
     useCallback(() => {
       fetchPosts();
-      return () => {
-        // Cleanup function if needed (e.g., unsubscribe from listeners)
-      };
+      // Não há necessidade de um cleanup específico aqui para listeners de posts
+      // porque getDocs é uma chamada única.
+      // O cleanup para listeners de realtime (onSnapshot) estaria em um useEffect dedicado.
     }, [fetchPosts])
   );
 
@@ -207,18 +200,30 @@ export default function FeedScreen() {
         />
       )}
 
-      {/* Seção de Curtidas */}
+      {/* Seção de Curtidas e Comentários */}
       <View style={styles.postActions}>
-          <TouchableOpacity onPress={() => handleLikeToggle(item.id, item.likes)}>
-              <Ionicons
-                  name={item.likes?.includes(auth.currentUser?.uid) ? "heart" : "heart-outline"}
-                  size={24}
-                  color={item.likes?.includes(auth.currentUser?.uid) ? "red" : "gray"}
-              />
-          </TouchableOpacity>
-          <Text style={styles.likesCount}>{item.likes?.length || 0} curtidas</Text>
+          <View style={styles.actionItem}>
+            <TouchableOpacity onPress={() => handleLikeToggle(item.id, item.likes)}>
+                <Ionicons
+                    name={item.likes?.includes(auth.currentUser?.uid) ? "heart" : "heart-outline"}
+                    size={24}
+                    color={item.likes?.includes(auth.currentUser?.uid) ? "red" : "gray"}
+                />
+            </TouchableOpacity>
+            <Text style={styles.likesCount}>{item.likes?.length || 0}</Text>
+          </View>
+
+          {/* Botão de Comentários */}
+          <View style={styles.actionItem}>
+            <TouchableOpacity
+                onPress={() => navigation.navigate("CommentScreen", { postId: item.id })}
+            >
+                <Ionicons name="chatbubble-outline" size={24} color="gray" />
+            </TouchableOpacity>
+            <Text style={styles.commentCount}>{item.commentCount || 0}</Text>
+          </View>
       </View>
-      {/* Fim da Seção de Curtidas */}
+      {/* Fim da Seção de Curtidas e Comentários */}
 
       {item.location && (
         <Text style={styles.postDetail}>Local: {item.location}</Text>
@@ -382,17 +387,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
   },
-  // --- Novos estilos para curtidas ---
   postActions: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "flex-start",
     marginTop: 10,
     marginBottom: 5,
   },
+  actionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 20,
+  },
   likesCount: {
-    marginLeft: 8,
+    marginLeft: 5,
     fontSize: 14,
     color: "#555",
   },
-  // --- Fim dos novos estilos ---
+  commentCount: {
+    marginLeft: 5,
+    fontSize: 14,
+    color: "#555",
+  },
 });

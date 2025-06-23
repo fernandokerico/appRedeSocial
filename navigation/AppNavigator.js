@@ -2,7 +2,9 @@
 import React from 'react';
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import TabNavigator from "./TabNavigator"; // Importa o TabNavigator
-import OtherUserProfileScreen from '../app_/OtherUserProfileScreen'; // <-- IMPORTANTE: Importe esta tela
+import OtherUserProfileScreen from '../app_/OtherUserProfileScreen'; // Importe esta tela
+import CommentScreen from '../app_/CommentScreen'; // <--- NOVO: Importe CommentScreen
+                                                   // ATENÇÃO: Ajuste este caminho se CommentScreen.js não estiver em `../app_`
 
 const Stack = createNativeStackNavigator();
 
@@ -17,12 +19,16 @@ function AppNavigator() {
       />
       
       {/* Adicione outras telas que SÓ usuários logados podem acessar aqui,
-          se elas não fizerem parte das abas. Exemplo:
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+          se elas não fizerem parte das abas.
       */}
-      {/* <-- Adicione esta linha para a tela de perfil de outros usuários */}
       <Stack.Screen name="OtherUserProfile" component={OtherUserProfileScreen} options={{ headerShown: false }} /> 
+      
+      {/* <--- NOVO: Adicione esta linha para a tela de Comentários --- > */}
+      <Stack.Screen 
+        name="CommentScreen" 
+        component={CommentScreen} 
+        options={{ title: 'Comentários' }} // Você pode definir o título do cabeçalho aqui
+      />
     </Stack.Navigator>
   );
 }
